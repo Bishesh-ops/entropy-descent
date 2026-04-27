@@ -2,10 +2,51 @@
 #include <vector>
 #include <random>
 #include <SDL3/SDL.h>
+#include <queue>
+#include <algorithm>
 
 class Map
 {
 private:
+    std::vector<int> getRegion(int startX, int startY, std::vector<bool> &visited) const
+    {
+        std::vector<int> region;
+        std::queue<int> queue;
+
+        int startIndex = getIndex(startX, startY);
+        queue.push(startIndex);
+        visited[startIndex] = true;
+
+        while (!queue.empty())
+        {
+            int current = queue.front();
+            queue.pop();
+            region.push_back(current);
+
+            int cx = current % width;
+            int cy = current / width;
+
+            int dx[] = {0, 0, -1, 1};
+            int dy[] = {-1, 1, 0, 0};
+
+            for (int i = 0; i < 4; ++i)
+            {
+                int nx = cx + dx[i];
+                int ny = cy + dy[i];
+
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height)
+                {
+                    int neighborIndex = getIndex(nx, ny);
+                    if (grid[neighborIndex] == 0 && !visited[neighborIndex])
+                    {
+                        visited[neighborIndex] = true;
+                        queue.push(neighborIndex);
+                    }
+                }
+            }
+        }
+        return region;
+    }
     int width, height;
     int cellSize;
     std::vector<int> grid;
@@ -43,6 +84,48 @@ public:
     Map(int w, int h, int cSize) : width(w), height(h), cellSize(cSize)
     {
         grid.resize(width * height, 0);
+    }
+    void processMap()
+    {
+        std::vector<std::vector<int>> regions;
+        std::vector<bool> visited(width * height, false);
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                int index = getIndex(x, y);
+                if (grid[index] == 0 && !visited[index])
+                {
+                    regions.push_back(getRegion(x, y, visited));
+                }
+            }
+        }
+
+        if (regions.empty())
+            return;
+
+        size_t largestRegionIndex = 0;
+        size_t maxSize = 0;
+        for (size_t i = 0; i < regions.size(); ++i)
+        {
+            if (regions[i].size() > maxSize)
+            {
+                maxSize = regions[i].size();
+                largestRegionIndex = i;
+            }
+        }
+
+        for (size_t i = 0; i < regions.size(); ++i)
+        {
+            if (i != largestRegionIndex)
+            {
+                for (int index : regions[i])
+                {
+                    grid[index] = 1;
+                }
+            }
+        }
     }
     void generateCaves(int fillProbability, int iterations)
     {
