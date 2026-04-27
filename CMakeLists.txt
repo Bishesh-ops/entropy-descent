@@ -1,18 +1,22 @@
 cmake_minimum_required(VERSION 3.31)
 project(NarrativeRoguelike VERSION 1.0)
 
-# Pushing the standard to the latest stable edge
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Find the SDL3 library
+# --- Dependencies ---
 find_package(SDL3 REQUIRED)
 
-# 1. Point to the new location of main.cpp
-add_executable(Roguelike src/main.cpp)
+include(FetchContent)
+FetchContent_Declare(
+    entt
+    GIT_REPOSITORY https://github.com/skypjack/entt
+    GIT_TAG        v3.13.2 # Latest stable branch
+)
+FetchContent_MakeAvailable(entt)
 
-# 2. Tell the compiler where the header files live
+
+add_executable(Roguelike src/main.cpp)
 target_include_directories(Roguelike PRIVATE include)
 
-# Link SDL3
-target_link_libraries(Roguelike PRIVATE SDL3::SDL3)
+target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT)
