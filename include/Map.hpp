@@ -170,7 +170,7 @@ public:
         }
     }
 
-    void render(SDL_Renderer *renderer) const
+    void render(SDL_Renderer *renderer, int cameraX, int cameraY) const
     {
         for (int y = 0; y < height; ++y)
         {
@@ -182,16 +182,19 @@ public:
                 }
                 else
                 {
-
                     SDL_SetRenderDrawColor(renderer, 20, 20, 25, 255);
                 }
 
                 SDL_FRect rect = {
-                    static_cast<float>(x * cellSize),
-                    static_cast<float>(y * cellSize),
+                    static_cast<float>((x * cellSize) - cameraX),
+                    static_cast<float>((y * cellSize) - cameraY),
                     static_cast<float>(cellSize),
                     static_cast<float>(cellSize)};
-                SDL_RenderFillRect(renderer, &rect);
+
+                if (rect.x + rect.w > 0 && rect.x < 800 && rect.y + rect.h > 0 && rect.y < 600)
+                {
+                    SDL_RenderFillRect(renderer, &rect);
+                }
             }
         }
     }
