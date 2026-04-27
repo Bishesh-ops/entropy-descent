@@ -20,7 +20,7 @@ void MenuState::processInput()
         {
             if (event.key.key == SDLK_RETURN)
             {
-                game.getStateMachine().pushState(std::make_unique<PlayState>(game), true);
+                game.getStateMachine().pushState(std::make_unique<PlayState>(game), false);
             }
         }
     }
