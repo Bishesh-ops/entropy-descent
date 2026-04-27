@@ -15,8 +15,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(entt)
 
-
-add_executable(Roguelike src/main.cpp)
 add_executable(Roguelike src/main.cpp src/Game.cpp)
 target_include_directories(Roguelike PRIVATE include)
 
