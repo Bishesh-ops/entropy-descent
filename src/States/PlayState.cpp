@@ -91,6 +91,7 @@ void PlayState::processInput()
 void PlayState::update()
 {
     auto &pos = registry.get<Position>(playerEntity);
+    gameMap.calculateFOV(pos.x, pos.y, 15);
     int playerPixelX = pos.x * 20;
     int playerPixelY = pos.y * 20;
 

@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <queue>
 #include <algorithm>
+#include <cmath>
 
 class Map
 {
@@ -50,6 +51,8 @@ private:
     int width, height;
     int cellSize;
     std::vector<int> grid;
+    std::vector<bool> visible;
+    std::vector<bool> explored;
 
     int getIndex(int x, int y) const
     {
@@ -84,6 +87,8 @@ public:
     Map(int w, int h, int cSize) : width(w), height(h), cellSize(cSize)
     {
         grid.resize(width * height, 0);
+        visible.resize(width * height, false);
+        explored.resize(width * height, false);
     }
     void processMap()
     {
@@ -170,19 +175,70 @@ public:
         }
     }
 
+    void calculateFOV(int playerX, int playerY, int radius)
+    {
+        std::fill(visible.begin(), visible.end(), false);
+
+        visible[getIndex(playerX, playerX)] = true;
+        explored[getIndex(playerX, playerY)] = true;
+
+        for (float angle = 0; angle < 360; angle += 0.5f)
+        {
+            float rad = angle * (M_PI / 180.0f);
+            float dirX = std::cos(rad);
+            float dirY = std::sin(rad);
+
+            float rayX = playerX;
+            float rayY = playerY;
+
+            for (int r = 0; r < radius; ++r)
+            {
+                rayX += dirX;
+                rayY += dirY;
+
+                int gridX = static_cast<int>(std::round(rayX));
+                int gridY = static_cast<int>(std::round(rayY));
+
+                if (gridX < 0 || gridX > width || gridY < 0 || gridY > height)
+                    break;
+                int index = getIndex(gridX, gridY);
+
+                visible[index] = true;
+                explored[index] = true;
+
+                if (grid[index] == 1)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
     void render(SDL_Renderer *renderer, int cameraX, int cameraY) const
     {
         for (int y = 0; y < height; ++y)
         {
             for (int x = 0; x < width; ++x)
             {
-                if (grid[getIndex(x, y)] == 1)
+                int index = getIndex(x, y);
+
+                if (!explored[index])
+                    continue;
+
+                if (grid[index] == 1)
                 {
-                    SDL_SetRenderDrawColor(renderer, 60, 60, 60, 255);
+                    if (visible[index])
+                        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+                    else
+                        SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
                 }
                 else
                 {
-                    SDL_SetRenderDrawColor(renderer, 20, 20, 25, 255);
+
+                    if (visible[index])
+                        SDL_SetRenderDrawColor(renderer, 40, 40, 50, 255);
+                    else
+                        SDL_SetRenderDrawColor(renderer, 15, 15, 20, 255);
                 }
 
                 SDL_FRect rect = {
