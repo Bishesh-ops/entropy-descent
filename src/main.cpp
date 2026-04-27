@@ -1,30 +1,24 @@
 #include <SDL3/SDL.h>
 #include <iostream>
+#include "Map.hpp"
 
 int main(int argc, char *argv[])
 {
     if (!SDL_Init(SDL_INIT_VIDEO))
-    {
-        std::cerr << "Failed to initialize SDL:" << SDL_GetError() << "\n";
         return 1;
-    }
 
-    SDL_Window *window = SDL_CreateWindow("Narrative Roguelike - Engine Test.", 800, 600, 0);
+    SDL_Window *window = SDL_CreateWindow("Narrative Roguelike - Map Gen", 800, 600, 0);
     if (!window)
-    {
-        std::cerr << "Failed to create window:" << SDL_GetError() << "\n";
-        SDL_Quit();
         return 1;
-    }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer)
-    {
-        std::cerr << "Failed to create renderer: " << SDL_GetError() << "\n";
-        SDL_DestroyWindow(window);
-        SDL_Quit();
         return 1;
-    }
+
+    Map gameMap(80, 60, 10);
+
+    gameMap.generateCaves(45, 5);
+
     bool running = true;
     SDL_Event event;
 
@@ -36,9 +30,17 @@ int main(int argc, char *argv[])
             {
                 running = false;
             }
+
+            if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_SPACE)
+            {
+                gameMap.generateCaves(45, 5);
+            }
         }
-        SDL_SetRenderDrawColor(renderer, 20, 20, 25, 255);
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+
+        gameMap.render(renderer);
 
         SDL_RenderPresent(renderer);
     }
