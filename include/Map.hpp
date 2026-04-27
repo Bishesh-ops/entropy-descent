@@ -179,7 +179,7 @@ public:
     {
         std::fill(visible.begin(), visible.end(), false);
 
-        visible[getIndex(playerX, playerX)] = true;
+        visible[getIndex(playerX, playerY)] = true;
         explored[getIndex(playerX, playerY)] = true;
 
         for (float angle = 0; angle < 360; angle += 0.5f)
@@ -199,7 +199,7 @@ public:
                 int gridX = static_cast<int>(std::round(rayX));
                 int gridY = static_cast<int>(std::round(rayY));
 
-                if (gridX < 0 || gridX > width || gridY < 0 || gridY > height)
+                if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= height)
                     break;
                 int index = getIndex(gridX, gridY);
 
