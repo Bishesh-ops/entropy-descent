@@ -8,3 +8,7 @@ struct Position
 struct Player
 {
 };
+
+struct Enemy
+{
+};

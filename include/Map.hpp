@@ -261,4 +261,11 @@ public:
             return false;
         return grid[getIndex(x, y)] == 0;
     }
+
+    bool isVisible(int x, int y) const
+    {
+        if (x < 0 || y < 0 || x >= width || y >= height)
+            return false;
+        return visible[getIndex(x, y)];
+    }
 };

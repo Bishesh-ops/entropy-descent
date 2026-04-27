@@ -1,6 +1,8 @@
 #include "../../include/States/PlayState.hpp"
 #include "../../include/Components.hpp"
 #include <iostream>
+#include <random>
+#include <cmath>
 
 PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0)
@@ -26,8 +28,28 @@ PlayState::PlayState(Game &gameRef)
         }
     }
     registry.emplace<Position>(playerEntity, startX, startY);
-}
 
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> distX(0, 199);
+    std::uniform_int_distribution<int> distY(0, 149);
+
+    int numberOfEnemies = 60;
+    for (int i = 0; i < numberOfEnemies; ++i)
+    {
+        int ex = distX(rng);
+        int ey = distY(rng);
+
+        while (!gameMap.isFloor(ex, ey) || (std::abs(ex - startX) < 10 && std::abs(ey - startY) < 10))
+        {
+            ex = distX(rng);
+            ey = distY(rng);
+        }
+
+        auto enemyEntity = registry.create();
+        registry.emplace<Position>(enemyEntity, ex, ey);
+        registry.emplace<Enemy>(enemyEntity);
+    }
+}
 void PlayState::processInput()
 {
     SDL_Event event;
@@ -122,13 +144,22 @@ void PlayState::render()
     {
         auto &pos = view.get<Position>(entity);
 
+        if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
+        {
+            continue; // Skip the rest of the loop, don't draw this entity!
+        }
+
         if (registry.all_of<Player>(entity))
         {
-            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan Player
+        }
+        else if (registry.all_of<Enemy>(entity))
+        {
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red Enemy
         }
         else
         {
-            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Yellow fallback
         }
 
         SDL_FRect rect = {
