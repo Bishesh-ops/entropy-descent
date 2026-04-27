@@ -15,7 +15,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(entt)
 
-add_executable(Roguelike src/main.cpp src/Game.cpp)
+add_executable(Roguelike src/main.cpp src/Game.cpp src/States/MenuState.cpp src/States/PlayState.cpp)
 target_include_directories(Roguelike PRIVATE include)
 
 target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT)

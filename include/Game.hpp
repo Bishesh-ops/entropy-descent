@@ -1,7 +1,6 @@
 #pragma once
 #include <SDL3/SDL.h>
-#include <entt/entt.hpp>
-#include "Map.hpp"
+#include "StateMachine.hpp"
 
 class Game
 {
@@ -9,21 +8,20 @@ public:
     Game();
     ~Game();
     void run();
+    void quit() { isRunning = false; }
+
+    SDL_Renderer *getRenderer() const { return renderer; }
+    StateMachine &getStateMachine() { return stateMachine; }
+    int getWindowWidth() const { return windowWidth; }
+    int getWindowHeight() const { return windowHeight; }
 
 private:
-    void processInput();
-    void update();
-    void render();
-
-    SDL_Window *window;
-    SDL_Renderer *renderer;
+    SDL_Window *window = nullptr;
+    SDL_Renderer *renderer = nullptr;
     bool isRunning;
-    entt::registry registry;
-    entt::entity playerEntity;
-    Map gameMap;
 
-    int cameraX;
-    int cameraY;
+    StateMachine stateMachine;
+
     int windowWidth;
     int windowHeight;
 };
