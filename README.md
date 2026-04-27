@@ -8,7 +8,8 @@ The core philosophy of this project is **Emergent Physics & Progression**—repl
 * **Language:** Modern C++ (Targeting C++23 standards for maximum memory safety and performance).
 * **Build System:** CMake
 * **Architecture:** Entity Component System (ECS)
-* **Core Libraries:** * `SDL3` (Hardware-accelerated windowing, input, and 2D rendering)
+* **Core Libraries:**
+  * `SDL3` (Hardware-accelerated windowing, input, and 2D rendering)
   * `EnTT` (Industry-standard, blazingly fast ECS framework)
 
 ## Current Features
@@ -30,12 +31,12 @@ The engine foundation is laid. The next phases focus on systemic interactions an
 - [ ] **Data-Driven Architecture:** Integration of a JSON parser to load enemies, items, and narrative lore fragments from external files, allowing for massive content scaling without recompiling C++.
 - [ ] **Physics-Based Combat Loop:** Implementing grid-based translations of n-body physics, such as gravity wells, knockbacks, and environmental state changes (e.g., turning water to steam to block line of sight).
 
-## 🛠️ Build Instructions (Linux)
+## Build Instructions (Linux)
 Ensure you have GCC 14+ and CMake 3.31+ installed. SDL3 must be installed or built from source on your system.
 
 ```bash
 # Clone the repository
-git clone [https://github.com/yourusername/entropy-descent.git](https://github.com/yourusername/entropy-descent.git)
+git clone [https://github.com/bishesh-ops/entropy-descent.git]
 cd entropy-descent
 
 # Generate build files and compile
