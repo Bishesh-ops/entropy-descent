@@ -16,7 +16,8 @@ PlayState::PlayState(Game &gameRef)
     playerEntity = registry.create();
     registry.emplace<Player>(playerEntity);
     registry.emplace<Collider>(playerEntity);
-
+    registry.emplace<Health>(playerEntity, 100, 100);   // 100 HP
+    registry.emplace<CombatStats>(playerEntity, 10, 5); // 10 Atk 5 Def
     int startX = 100, startY = 75;
     while (!gameMap.isFloor(startX, startY))
     {
@@ -51,6 +52,8 @@ PlayState::PlayState(Game &gameRef)
         registry.emplace<Position>(enemyEntity, ex, ey);
         registry.emplace<Enemy>(enemyEntity);
         registry.emplace<Collider>(enemyEntity);
+        registry.emplace<Health>(enemyEntity, 20, 20);    // 20 HP
+        registry.emplace<CombatStats>(enemyEntity, 5, 2); // 5 Atk 2 def
     }
 }
 void PlayState::processInput()
@@ -128,7 +131,19 @@ void PlayState::processInput()
                         // We bumped into an entity. We can check what it is using the registry!
                         if (registry.all_of<Enemy>(blocker))
                         {
-                            std::cout << "Bumped into an Enemy! (Combat goes here)" << std::endl;
+                            auto &pStats = registry.get<CombatStats>(playerEntity);
+                            auto &eHealth = registry.get<Health>(blocker);
+                            auto &eStats = registry.get<CombatStats>(blocker);
+
+                            int damage = std::max(1, pStats.attack - eStats.defense);
+                            eHealth.current -= damage;
+                            std::cout << "You hit enemy for " << damage << " dmg! (HP: " << eHealth.current << "/" << eHealth.max << ")" << std::endl;
+                            // Death Check
+                            if (eHealth.current <= 0)
+                            {
+                                std::cout << "Enemy shattered into entropy!" << std::endl;
+                                registry.destroy(blocker); // Removes entity and all components from memory!
+                            }
                             playerActed = true; // Attacking spends a turn
                         }
                     }
@@ -164,7 +179,26 @@ void PlayState::update()
 
             int distToPlayer = std::abs(enemyPos.x - pos.x) + std::abs(enemyPos.y - pos.y);
 
-            if (distToPlayer <= 15)
+            if (distToPlayer == 1)
+            {
+                auto &eStats = registry.get<CombatStats>(entity);
+                auto &pHealth = registry.get<Health>(playerEntity);
+                auto &pStats = registry.get<CombatStats>(playerEntity);
+
+                int damage = std::max(1, eStats.attack - pStats.defense);
+                pHealth.current -= damage;
+
+                std::cout << "Enemy hits you for " << damage << " dmg! (Your HP: " << pHealth.current << ")" << std::endl;
+
+                if (pHealth.current <= 0)
+                {
+                    std::cout << "YOU HAVE DESCENDED. GAME OVER." << std::endl;
+                    // For now, just quit. Later we can trigger a Game Over State.
+                    game.quit();
+                }
+            }
+
+            else if (distToPlayer <= 15)
             {
                 auto path = gameMap.findPath(enemyPos.x, enemyPos.y, pos.x, pos.y);
 
