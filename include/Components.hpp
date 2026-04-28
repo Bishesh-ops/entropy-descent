@@ -12,3 +12,7 @@ struct Player
 struct Enemy
 {
 };
+
+struct Collider
+{
+};

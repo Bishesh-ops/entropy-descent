@@ -21,4 +21,6 @@ private:
 
     int cameraX;
     int cameraY;
+
+    entt::entity getBlockingEntityAt(int x, int y);
 };

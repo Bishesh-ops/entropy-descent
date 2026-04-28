@@ -14,6 +14,7 @@ PlayState::PlayState(Game &gameRef)
 
     playerEntity = registry.create();
     registry.emplace<Player>(playerEntity);
+    registry.emplace<Collider>(playerEntity);
 
     int startX = 100, startY = 75;
     while (!gameMap.isFloor(startX, startY))
@@ -48,6 +49,7 @@ PlayState::PlayState(Game &gameRef)
         auto enemyEntity = registry.create();
         registry.emplace<Position>(enemyEntity, ex, ey);
         registry.emplace<Enemy>(enemyEntity);
+        registry.emplace<Collider>(enemyEntity);
     }
 }
 void PlayState::processInput()
@@ -100,11 +102,33 @@ void PlayState::processInput()
                 nextX--;
             if (event.key.key == SDLK_D || event.key.key == SDLK_RIGHT)
                 nextX++;
-
-            if (gameMap.isFloor(nextX, nextY))
+            if (nextX != pos.x || nextY != pos.y) // Only check if we actually tried to move
             {
-                pos.x = nextX;
-                pos.y = nextY;
+                if (!gameMap.isFloor(nextX, nextY))
+                {
+                    // Bumped into a static wall
+                    std::cout << "Bumped into a wall!" << std::endl;
+                }
+                else
+                {
+                    // Tile is floor, check for dynamic entities
+                    entt::entity blocker = getBlockingEntityAt(nextX, nextY);
+
+                    if (blocker != entt::null)
+                    {
+                        // We bumped into an entity. We can check what it is using the registry!
+                        if (registry.all_of<Enemy>(blocker))
+                        {
+                            std::cout << "Bumped into an Enemy! (Combat goes here)" << std::endl;
+                        }
+                    }
+                    else
+                    {
+                        // Tile is walkable and clear
+                        pos.x = nextX;
+                        pos.y = nextY;
+                    }
+                }
             }
         }
     }
@@ -170,4 +194,18 @@ void PlayState::render()
     }
 
     SDL_RenderPresent(renderer);
+}
+
+entt::entity PlayState::getBlockingEntityAt(int x, int y)
+{
+    auto view = registry.view<Position, Collider>();
+    for (auto entity : view)
+    {
+        auto &pos = view.get<Position>(entity);
+        if (pos.x == x && pos.y == y)
+        {
+            return entity;
+        }
+    }
+    return entt::null; // Return a null entity if the tile is clear
 }
