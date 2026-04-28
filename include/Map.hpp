@@ -84,6 +84,76 @@ private:
     }
 
 public:
+    std::vector<int> findPath(int startX, int startY, int goalX, int goalY) const
+    {
+        std::vector<int> path;
+
+        if (!isFloor(goalX, goalY))
+            return path;
+
+        int startIndex = getIndex(startX, startY);
+        int goalIndex = getIndex(goalX, goalY);
+
+        auto heuristic = [](int x1, int y1, int x2, int y2)
+        {
+            return std::abs(x1 - x2) / std::abs(y1 - y2);
+        };
+
+        std::vector<int> gScore(width * height, 1e9);
+        std::vector<int> cameFrom(width * height, -1);
+
+        gScore[startIndex] = 0;
+
+        using P = std::pair<int, int>;
+        std::priority_queue<P, std::vector<P>, std::greater<P>> openSet;
+        openSet.push({heuristic(startX, startY, goalX, goalY), startIndex});
+        while (!openSet.empty())
+        {
+            int current = openSet.top().second;
+            openSet.pop();
+
+            if (current == goalIndex)
+            {
+                int curr = goalIndex;
+                while (curr != startIndex)
+                {
+                    path.push_back(curr);
+                    curr = cameFrom[curr];
+                }
+                std::reverse(path.begin(), path.end());
+                return path;
+            }
+
+            int cx = current % width;
+            int cy = current / width;
+
+            int dx[] = {0, 0, -1, 1};
+            int dy[] = {-1, 1, 0, 0};
+
+            for (int i = 0; i < 4; ++i)
+            {
+                int nx = cx + dx[i];
+                int ny = cy + dy[i];
+
+                if (isFloor(nx, ny))
+                {
+                    int neighborIndex = getIndex(nx, ny);
+                    int tentative_gScore = gScore[current] + 1;
+
+                    if (tentative_gScore < gScore[neighborIndex])
+                    {
+                        cameFrom[neighborIndex] = current;
+                        gScore[neighborIndex] = tentative_gScore;
+
+                        int fScore = tentative_gScore + heuristic(nx, ny, goalX, goalY);
+                        openSet.push({fScore, neighborIndex});
+                    }
+                }
+            }
+        }
+        return path;
+    }
+
     Map(int w, int h, int cSize) : width(w), height(h), cellSize(cSize)
     {
         grid.resize(width * height, 0);
