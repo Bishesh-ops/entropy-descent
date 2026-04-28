@@ -96,7 +96,9 @@ public:
 
         auto heuristic = [](int x1, int y1, int x2, int y2)
         {
-            return std::abs(x1 - x2) + std::abs(y1 - y2);
+            int dx = std::abs(x1 - x2);
+            int dy = std::abs(y1 - y2);
+            return (dx + dy) * 10 + std::abs(dx - dy);
         };
 
         std::vector<int> gScore(width * height, 1e9);
@@ -107,6 +109,7 @@ public:
         using P = std::pair<int, int>;
         std::priority_queue<P, std::vector<P>, std::greater<P>> openSet;
         openSet.push({heuristic(startX, startY, goalX, goalY), startIndex});
+
         while (!openSet.empty())
         {
             int current = openSet.top().second;
@@ -138,7 +141,7 @@ public:
                 if (isFloor(nx, ny))
                 {
                     int neighborIndex = getIndex(nx, ny);
-                    int tentative_gScore = gScore[current] + 1;
+                    int tentative_gScore = gScore[current] + 10;
 
                     if (tentative_gScore < gScore[neighborIndex])
                     {
