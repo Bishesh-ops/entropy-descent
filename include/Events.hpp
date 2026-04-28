@@ -1,0 +1,13 @@
+#pragma once
+#include <entt/entt.hpp>
+
+struct MeleeAttackEvent
+{
+    entt::entity attacker;
+    entt::entity target;
+};
+
+struct EntityDeathEvent
+{
+    entt::entity deadEntity;
+};
