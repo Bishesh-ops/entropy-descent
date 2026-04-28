@@ -8,14 +8,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 find_package(SDL3 REQUIRED)
 
 include(FetchContent)
+
+# Fetch EnTT
 FetchContent_Declare(
     entt
     GIT_REPOSITORY https://github.com/skypjack/entt
-    GIT_TAG        v3.13.2 # Latest stable branch
+    GIT_TAG        v3.13.2 
 )
 FetchContent_MakeAvailable(entt)
+
+# Fetch nlohmann/json
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3 
+)
+FetchContent_MakeAvailable(json)
 
 add_executable(Roguelike src/main.cpp src/Game.cpp src/States/MenuState.cpp src/States/PlayState.cpp)
 target_include_directories(Roguelike PRIVATE include)
 
-target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT)
+# Link SDL3, EnTT, and JSON
+target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json)

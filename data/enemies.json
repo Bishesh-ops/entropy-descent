@@ -1,0 +1,16 @@
+{
+    "enemies":{
+        "corrupted_husk":{
+            "hp": 20,
+            "attack": 5,
+            "defense": 2,
+            "color": [255, 0, 0, 255]
+        },
+        "entropic_brute": {
+            "hp": 50,
+            "attack": 12,
+            "defense": 5,
+            "color": [200, 50, 100, 255]
+        }
+    }
+}
