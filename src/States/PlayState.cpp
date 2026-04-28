@@ -1,4 +1,5 @@
 #include "../../include/States/PlayState.hpp"
+#include "../../include/Events.hpp"
 #include "../../include/Components.hpp"
 #include <iostream>
 #include <random>
@@ -8,16 +9,22 @@ PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0),
       currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true)
 {
+    // --- Event Bindings ---
+    dispatcher.sink<MeleeAttackEvent>().connect<&PlayState::onMeleeAttack>(this);
+    dispatcher.sink<EntityDeathEvent>().connect<&PlayState::onEntityDeath>(this);
 
+    // --- World Generation ---
     std::cout << "Generating massive world..." << std::endl;
     gameMap.generateCaves(45, 5);
     gameMap.processMap();
 
+    // --- Player Initialization ---
     playerEntity = registry.create();
     registry.emplace<Player>(playerEntity);
     registry.emplace<Collider>(playerEntity);
-    registry.emplace<Health>(playerEntity, 100, 100);   // 100 HP
-    registry.emplace<CombatStats>(playerEntity, 10, 5); // 10 Atk 5 Def
+    registry.emplace<Health>(playerEntity, 100, 100);
+    registry.emplace<CombatStats>(playerEntity, 10, 5);
+
     int startX = 100, startY = 75;
     while (!gameMap.isFloor(startX, startY))
     {
@@ -32,6 +39,7 @@ PlayState::PlayState(Game &gameRef)
     }
     registry.emplace<Position>(playerEntity, startX, startY);
 
+    // --- Enemy Initialization ---
     std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> distX(0, 199);
     std::uniform_int_distribution<int> distY(0, 149);
@@ -52,10 +60,11 @@ PlayState::PlayState(Game &gameRef)
         registry.emplace<Position>(enemyEntity, ex, ey);
         registry.emplace<Enemy>(enemyEntity);
         registry.emplace<Collider>(enemyEntity);
-        registry.emplace<Health>(enemyEntity, 20, 20);    // 20 HP
-        registry.emplace<CombatStats>(enemyEntity, 5, 2); // 5 Atk 2 def
+        registry.emplace<Health>(enemyEntity, 20, 20);
+        registry.emplace<CombatStats>(enemyEntity, 5, 2);
     }
 }
+
 void PlayState::processInput()
 {
     SDL_Event event;
@@ -68,22 +77,21 @@ void PlayState::processInput()
 
         if (event.type == SDL_EVENT_KEY_DOWN)
         {
-
             if (event.key.key == SDLK_ESCAPE)
             {
                 game.getStateMachine().popState();
                 return;
             }
-            // Don't process movement/actions if enemies are currently taking their turn
+
             if (currentTurnState != TurnState::WAITING_FOR_PLAYER)
                 continue;
 
-            bool playerActed = false; // Flag to check if we actually spent a turn
-
+            bool playerActed = false;
             auto &pos = registry.get<Position>(playerEntity);
             int nextX = pos.x;
             int nextY = pos.y;
 
+            // Debug: Regenerate Map
             if (event.key.key == SDLK_SPACE)
             {
                 gameMap.generateCaves(45, 5);
@@ -97,13 +105,12 @@ void PlayState::processInput()
                         pos.y++;
                     }
                     if (pos.y >= 150)
-                    {
                         pos.y = 0;
-                    }
                 }
                 playerActed = true;
             }
 
+            // Movement Handling
             if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
                 nextY--;
             if (event.key.key == SDLK_S || event.key.key == SDLK_DOWN)
@@ -115,49 +122,27 @@ void PlayState::processInput()
 
             if (nextX != pos.x || nextY != pos.y)
             {
-                if (!gameMap.isFloor(nextX, nextY))
+                if (gameMap.isFloor(nextX, nextY))
                 {
-                    // Bumped into a static wall
-                    std::cout << "Bumped into a wall!" << std::endl;
-                    // Bumping a wall shouldn't spend a turn, so playerActed remains false
-                }
-                else
-                {
-                    // Tile is floor, check for dynamic entities
                     entt::entity blocker = getBlockingEntityAt(nextX, nextY);
 
                     if (blocker != entt::null)
                     {
-                        // We bumped into an entity. We can check what it is using the registry!
                         if (registry.all_of<Enemy>(blocker))
                         {
-                            auto &pStats = registry.get<CombatStats>(playerEntity);
-                            auto &eHealth = registry.get<Health>(blocker);
-                            auto &eStats = registry.get<CombatStats>(blocker);
-
-                            int damage = std::max(1, pStats.attack - eStats.defense);
-                            eHealth.current -= damage;
-                            std::cout << "You hit enemy for " << damage << " dmg! (HP: " << eHealth.current << "/" << eHealth.max << ")" << std::endl;
-                            // Death Check
-                            if (eHealth.current <= 0)
-                            {
-                                std::cout << "Enemy shattered into entropy!" << std::endl;
-                                registry.destroy(blocker); // Removes entity and all components from memory!
-                            }
-                            playerActed = true; // Attacking spends a turn
+                            dispatcher.trigger(MeleeAttackEvent{playerEntity, blocker});
+                            playerActed = true;
                         }
                     }
                     else
                     {
-                        // Tile is walkable and clear
                         pos.x = nextX;
                         pos.y = nextY;
-                        playerActed = true; // Moving spends a turn
+                        playerActed = true;
                     }
                 }
             }
 
-            // If the player successfully moved, attacked, or used a skill, hand the turn to the enemies
             if (playerActed)
             {
                 currentTurnState = TurnState::ENEMY_TURN;
@@ -166,6 +151,7 @@ void PlayState::processInput()
         }
     }
 }
+
 void PlayState::update()
 {
     auto &pos = registry.get<Position>(playerEntity);
@@ -176,28 +162,12 @@ void PlayState::update()
         for (auto entity : view)
         {
             auto &enemyPos = view.get<Position>(entity);
-
             int distToPlayer = std::abs(enemyPos.x - pos.x) + std::abs(enemyPos.y - pos.y);
 
             if (distToPlayer == 1)
             {
-                auto &eStats = registry.get<CombatStats>(entity);
-                auto &pHealth = registry.get<Health>(playerEntity);
-                auto &pStats = registry.get<CombatStats>(playerEntity);
-
-                int damage = std::max(1, eStats.attack - pStats.defense);
-                pHealth.current -= damage;
-
-                std::cout << "Enemy hits you for " << damage << " dmg! (Your HP: " << pHealth.current << ")" << std::endl;
-
-                if (pHealth.current <= 0)
-                {
-                    std::cout << "YOU HAVE DESCENDED. GAME OVER." << std::endl;
-                    // For now, just quit. Later we can trigger a Game Over State.
-                    game.quit();
-                }
+                dispatcher.trigger(MeleeAttackEvent{entity, playerEntity});
             }
-
             else if (distToPlayer <= 15)
             {
                 auto path = gameMap.findPath(enemyPos.x, enemyPos.y, pos.x, pos.y);
@@ -208,8 +178,7 @@ void PlayState::update()
                     int nextX = nextIndex % 200;
                     int nextY = nextIndex / 200;
 
-                    if (getBlockingEntityAt(nextX, nextY) == entt::null &&
-                        !(nextX == pos.x && nextY == pos.y))
+                    if (getBlockingEntityAt(nextX, nextY) == entt::null && !(nextX == pos.x && nextY == pos.y))
                     {
                         enemyPos.x = nextX;
                         enemyPos.y = nextY;
@@ -217,7 +186,6 @@ void PlayState::update()
                 }
             }
         }
-
         currentTurnState = TurnState::WAITING_FOR_PLAYER;
     }
 
@@ -243,6 +211,7 @@ void PlayState::update()
         needsFOVUpdate = false;
     }
 }
+
 void PlayState::render()
 {
     SDL_Renderer *renderer = game.getRenderer();
@@ -258,21 +227,19 @@ void PlayState::render()
         auto &pos = view.get<Position>(entity);
 
         if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
-        {
-            continue; // Skip the rest of the loop, don't draw this entity!
-        }
+            continue;
 
         if (registry.all_of<Player>(entity))
         {
-            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan Player
+            SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
         }
         else if (registry.all_of<Enemy>(entity))
         {
-            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red Enemy
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         }
         else
         {
-            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Yellow fallback
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
         }
 
         SDL_FRect rect = {
@@ -292,9 +259,42 @@ entt::entity PlayState::getBlockingEntityAt(int x, int y)
     {
         auto &pos = view.get<Position>(entity);
         if (pos.x == x && pos.y == y)
-        {
             return entity;
-        }
     }
-    return entt::null; // Return a null entity if the tile is clear
+    return entt::null;
+}
+
+// --- Event Listeners ---
+
+void PlayState::onMeleeAttack(const MeleeAttackEvent &event)
+{
+    auto &aStats = registry.get<CombatStats>(event.attacker);
+    auto &tHealth = registry.get<Health>(event.target);
+    auto &tStats = registry.get<CombatStats>(event.target);
+
+    int damage = std::max(1, aStats.attack - tStats.defense);
+    tHealth.current -= damage;
+
+    std::cout << "Entity " << static_cast<uint32_t>(event.attacker)
+              << " hit Entity " << static_cast<uint32_t>(event.target)
+              << " for " << damage << " dmg! (HP: " << tHealth.current << ")" << std::endl;
+
+    if (tHealth.current <= 0)
+    {
+        dispatcher.trigger(EntityDeathEvent{event.target});
+    }
+}
+
+void PlayState::onEntityDeath(const EntityDeathEvent &event)
+{
+    if (registry.all_of<Player>(event.deadEntity))
+    {
+        std::cout << "YOU HAVE DESCENDED. GAME OVER." << std::endl;
+        game.quit();
+    }
+    else
+    {
+        std::cout << "Enemy shattered into entropy!" << std::endl;
+        registry.destroy(event.deadEntity);
+    }
 }

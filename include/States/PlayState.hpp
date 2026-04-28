@@ -2,6 +2,7 @@
 #include "State.hpp"
 #include "../Game.hpp"
 #include "../Map.hpp"
+#include "../Events.hpp"
 #include <entt/entt.hpp>
 
 enum class TurnState
@@ -22,12 +23,16 @@ private:
 
     Map gameMap;
     entt::registry registry;
-    entt::entity playerEntity;
+    entt::dispatcher dispatcher;
 
+    entt::entity playerEntity;
     int cameraX;
     int cameraY;
 
     entt::entity getBlockingEntityAt(int x, int y);
     TurnState currentTurnState;
     bool needsFOVUpdate;
+
+    void onMeleeAttack(const MeleeAttackEvent &event);
+    void onEntityDeath(const EntityDeathEvent &event);
 };

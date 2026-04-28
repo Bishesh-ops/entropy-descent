@@ -1,9 +1,9 @@
 #pragma once
 #include <entt/entt.hpp>
 
-struct MeleeCombact
+struct MeleeAttackEvent
 {
-    entt::entity atacker;
+    entt::entity attacker;
     entt::entity target;
 };
 
