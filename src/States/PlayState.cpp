@@ -38,6 +38,7 @@ PlayState::PlayState(Game &gameRef)
         }
     }
     registry.emplace<Position>(playerEntity, startX, startY);
+    spatialGrid[startY * 200 + startX] = playerEntity;
 
     // --- Enemy Initialization ---
     std::mt19937 rng(std::random_device{}());
@@ -62,6 +63,8 @@ PlayState::PlayState(Game &gameRef)
         registry.emplace<Collider>(enemyEntity);
         registry.emplace<Health>(enemyEntity, 20, 20);
         registry.emplace<CombatStats>(enemyEntity, 5, 2);
+
+        spatialGrid[ey * 200 + ex] = enemyEntity;
     }
 }
 
@@ -96,6 +99,9 @@ void PlayState::processInput()
             {
                 gameMap.generateCaves(45, 5);
                 gameMap.processMap();
+
+                int oldX = pos.x;
+                int oldY = pos.y;
                 while (!gameMap.isFloor(pos.x, pos.y))
                 {
                     pos.x++;
@@ -107,6 +113,7 @@ void PlayState::processInput()
                     if (pos.y >= 150)
                         pos.y = 0;
                 }
+                updateSpatialGrid(playerEntity, oldX, oldY, pos.x, pos.y);
                 playerActed = true;
             }
 
@@ -136,6 +143,7 @@ void PlayState::processInput()
                     }
                     else
                     {
+                        updateSpatialGrid(playerEntity, pos.x, pos.y, nextX, nextY);
                         pos.x = nextX;
                         pos.y = nextY;
                         playerActed = true;
@@ -180,6 +188,7 @@ void PlayState::update()
 
                     if (getBlockingEntityAt(nextX, nextY) == entt::null && !(nextX == pos.x && nextY == pos.y))
                     {
+                        updateSpatialGrid(entity, enemyPos.x, enemyPos.y, nextX, nextY);
                         enemyPos.x = nextX;
                         enemyPos.y = nextY;
                     }
@@ -252,14 +261,24 @@ void PlayState::render()
     SDL_RenderPresent(renderer);
 }
 
+void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
+{
+    int oldIndex = oldY * 200 + oldX;
+    int newIndex = newY * 200 + newX;
+    if (spatialGrid.count(oldIndex) && spatialGrid[oldIndex] == entity)
+    {
+        spatialGrid.erase(oldIndex);
+    }
+    spatialGrid[newIndex] = entity;
+}
+
 entt::entity PlayState::getBlockingEntityAt(int x, int y)
 {
-    auto view = registry.view<Position, Collider>();
-    for (auto entity : view)
+    int index = y * 200 + x;
+    auto it = spatialGrid.find(index);
+    if (it != spatialGrid.end())
     {
-        auto &pos = view.get<Position>(entity);
-        if (pos.x == x && pos.y == y)
-            return entity;
+        return it->second;
     }
     return entt::null;
 }
@@ -295,6 +314,17 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
     else
     {
         std::cout << "Enemy shattered into entropy!" << std::endl;
+
+        if (registry.all_of<Position>(event.deadEntity))
+        {
+            auto &pos = registry.get<Position>(event.deadEntity);
+            int index = pos.y * 200 + pos.x;
+            if (spatialGrid.count(index) && spatialGrid[index] == event.deadEntity)
+            {
+                spatialGrid.erase(index);
+            }
+        }
+
         registry.destroy(event.deadEntity);
     }
 }
