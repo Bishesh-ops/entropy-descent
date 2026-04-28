@@ -6,7 +6,7 @@
 
 PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0),
-      currentTurnState(TurnState::WAITING_FOR_PLAYER)
+      currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true)
 {
 
     std::cout << "Generating massive world..." << std::endl;
@@ -146,6 +146,7 @@ void PlayState::processInput()
             if (playerActed)
             {
                 currentTurnState = TurnState::ENEMY_TURN;
+                needsFOVUpdate = true;
             }
         }
     }
@@ -153,6 +154,7 @@ void PlayState::processInput()
 void PlayState::update()
 {
     auto &pos = registry.get<Position>(playerEntity);
+
     if (currentTurnState == TurnState::ENEMY_TURN)
     {
         auto view = registry.view<Position, Enemy>();
@@ -160,45 +162,53 @@ void PlayState::update()
         {
             auto &enemyPos = view.get<Position>(entity);
 
-            // Calculate A* Path using the function we added to Map.hpp
-            auto path = gameMap.findPath(enemyPos.x, enemyPos.y, pos.x, pos.y);
+            int distToPlayer = std::abs(enemyPos.x - pos.x) + std::abs(enemyPos.y - pos.y);
 
-            // path[0] is the very next tile the enemy needs to step on
-            if (!path.empty())
+            if (distToPlayer <= 15)
             {
-                int nextIndex = path[0];
-                int nextX = nextIndex % 200; // Map width is 200
-                int nextY = nextIndex / 200;
+                auto path = gameMap.findPath(enemyPos.x, enemyPos.y, pos.x, pos.y);
 
-                if (getBlockingEntityAt(nextX, nextY) == entt::null &&
-                    !(nextX == pos.x && nextY == pos.y)) // Don't step ON the player
+                if (!path.empty())
                 {
-                    enemyPos.x = nextX;
-                    enemyPos.y = nextY;
+                    int nextIndex = path[0];
+                    int nextX = nextIndex % 200;
+                    int nextY = nextIndex / 200;
+
+                    if (getBlockingEntityAt(nextX, nextY) == entt::null &&
+                        !(nextX == pos.x && nextY == pos.y))
+                    {
+                        enemyPos.x = nextX;
+                        enemyPos.y = nextY;
+                    }
                 }
             }
         }
 
-        // Once all enemies have moved, hand the turn back to the player
         currentTurnState = TurnState::WAITING_FOR_PLAYER;
     }
-    gameMap.calculateFOV(pos.x, pos.y, 15);
-    int playerPixelX = pos.x * 20;
-    int playerPixelY = pos.y * 20;
 
-    cameraX = playerPixelX - (game.getWindowWidth() / 2);
-    cameraY = playerPixelY - (game.getWindowHeight() / 2);
+    if (needsFOVUpdate)
+    {
+        gameMap.calculateFOV(pos.x, pos.y, 15);
 
-    if (cameraX < 0)
-        cameraX = 0;
-    if (cameraY < 0)
-        cameraY = 0;
-    if (cameraX > (200 * 20) - game.getWindowWidth())
-        cameraX = (200 * 20) - game.getWindowWidth();
-    if (cameraY > (150 * 20) - game.getWindowHeight())
-        cameraY = (150 * 20) - game.getWindowHeight();
+        int playerPixelX = pos.x * 20;
+        int playerPixelY = pos.y * 20;
+
+        cameraX = playerPixelX - (game.getWindowWidth() / 2);
+        cameraY = playerPixelY - (game.getWindowHeight() / 2);
+
+        if (cameraX < 0)
+            cameraX = 0;
+        if (cameraY < 0)
+            cameraY = 0;
+        if (cameraX > (200 * 20) - game.getWindowWidth())
+            cameraX = (200 * 20) - game.getWindowWidth();
+        if (cameraY > (150 * 20) - game.getWindowHeight())
+            cameraY = (150 * 20) - game.getWindowHeight();
+
+        needsFOVUpdate = false;
+    }
 }
-
 void PlayState::render()
 {
     SDL_Renderer *renderer = game.getRenderer();

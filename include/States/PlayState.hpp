@@ -29,4 +29,5 @@ private:
 
     entt::entity getBlockingEntityAt(int x, int y);
     TurnState currentTurnState;
+    bool needsFOVUpdate;
 };
