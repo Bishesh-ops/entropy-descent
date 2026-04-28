@@ -45,7 +45,7 @@ PlayState::PlayState(Game &gameRef)
     registry.emplace<Position>(playerEntity, startX, startY);
     spatialGrid[startY * MAP_WIDTH + startX] = playerEntity;
 
-    std::vector<EnemyDef> enemyArchetypes = DataLoader::loadEnemyDefs("/data/enemies.json");
+    std::vector<EnemyDef> enemyArchetypes = DataLoader::loadEnemyDefs("../data/enemies.json");
     if (enemyArchetypes.empty())
     {
         std::cerr << "WARNING: No enemy archetypes loaded! Using fallback." << std::endl;
@@ -248,12 +248,20 @@ void PlayState::render()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    // Pass window bounds for dynamic culling
     gameMap.render(renderer, cameraX, cameraY, game.getWindowWidth(), game.getWindowHeight());
 
     auto view = registry.view<Position>();
     for (auto entity : view)
     {
         auto &pos = view.get<Position>(entity);
+
+        // --- CRITICAL FOV CULLING ---
+        // If it's an enemy and the tile is NOT currently visible, skip drawing it entirely!
+        if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
+        {
+            continue;
+        }
 
         if (registry.all_of<Player>(entity))
         {
@@ -286,7 +294,6 @@ void PlayState::render()
 
     SDL_RenderPresent(renderer);
 }
-
 // --- Spatial Grid Management ---
 
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
