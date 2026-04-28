@@ -1,6 +1,7 @@
 #include "../../include/States/PlayState.hpp"
 #include "../../include/Events.hpp"
 #include "../../include/Components.hpp"
+#include "../../include/DataLoader.hpp"
 #include <iostream>
 #include <random>
 #include <cmath>
@@ -44,10 +45,17 @@ PlayState::PlayState(Game &gameRef)
     registry.emplace<Position>(playerEntity, startX, startY);
     spatialGrid[startY * MAP_WIDTH + startX] = playerEntity;
 
-    // --- Enemy Initialization ---
+    std::vector<EnemyDef> enemyArchetypes = DataLoader::loadEnemyDefs("/data/enemies.json");
+    if (enemyArchetypes.empty())
+    {
+        std::cerr << "WARNING: No enemy archetypes loaded! Using fallback." << std::endl;
+        enemyArchetypes.push_back({"Fallback", 20, 5, 2});
+    }
+
     std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> distX(0, 199);
-    std::uniform_int_distribution<int> distY(0, 149);
+    std::uniform_int_distribution<int> distX(0, MAP_WIDTH - 1);
+    std::uniform_int_distribution<int> distY(0, MAP_HEIGHT - 1);
+    std::uniform_int_distribution<int> distArchetype(0, enemyArchetypes.size() - 1);
 
     int numberOfEnemies = 60;
     for (int i = 0; i < numberOfEnemies; ++i)
@@ -55,7 +63,6 @@ PlayState::PlayState(Game &gameRef)
         int ex = distX(rng);
         int ey = distY(rng);
 
-        // Hardened: Ensure we don't spawn an enemy where one already exists
         while (!gameMap.isFloor(ex, ey) ||
                (std::abs(ex - startX) < 10 && std::abs(ey - startY) < 10) ||
                spatialGrid[ey * MAP_WIDTH + ex] != entt::null)
@@ -64,12 +71,18 @@ PlayState::PlayState(Game &gameRef)
             ey = distY(rng);
         }
 
+        // Pull the random archetype data from JSON
+        const EnemyDef &def = enemyArchetypes[distArchetype(rng)];
+
         auto enemyEntity = registry.create();
         registry.emplace<Position>(enemyEntity, ex, ey);
         registry.emplace<Enemy>(enemyEntity);
         registry.emplace<Collider>(enemyEntity);
-        registry.emplace<Health>(enemyEntity, 20, 20);
-        registry.emplace<CombatStats>(enemyEntity, 5, 2);
+        registry.emplace<Health>(enemyEntity, def.hp, def.hp);
+        registry.emplace<CombatStats>(enemyEntity, def.attack, def.defense);
+
+        // Attach the parsed color to the entity!
+        registry.emplace<RenderColor>(enemyEntity, def.r, def.g, def.b, def.a);
 
         spatialGrid[ey * MAP_WIDTH + ex] = enemyEntity;
     }
@@ -242,16 +255,22 @@ void PlayState::render()
     {
         auto &pos = view.get<Position>(entity);
 
-        if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
-            continue;
-
         if (registry.all_of<Player>(entity))
         {
             SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
         }
         else if (registry.all_of<Enemy>(entity))
         {
-            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+            // Dynamically paint the enemy based on its JSON color
+            if (registry.all_of<RenderColor>(entity))
+            {
+                auto &color = registry.get<RenderColor>(entity);
+                SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+            }
+            else
+            {
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Fallback Red
+            }
         }
         else
         {

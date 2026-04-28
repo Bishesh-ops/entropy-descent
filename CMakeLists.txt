@@ -3,6 +3,7 @@ project(NarrativeRoguelike VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 # --- Dependencies ---
 find_package(SDL3 REQUIRED)
@@ -15,6 +16,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/skypjack/entt
     GIT_TAG        v3.13.2 
 )
+set(ENTT_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(entt)
 
 # Fetch nlohmann/json
@@ -23,9 +25,10 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3 
 )
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE) 
 FetchContent_MakeAvailable(json)
 
-add_executable(Roguelike src/main.cpp src/Game.cpp src/States/MenuState.cpp src/States/PlayState.cpp)
+add_executable(Roguelike src/main.cpp src/Game.cpp src/States/MenuState.cpp src/States/PlayState.cpp src/DataLoader.cpp)
 target_include_directories(Roguelike PRIVATE include)
 
 # Link SDL3, EnTT, and JSON
