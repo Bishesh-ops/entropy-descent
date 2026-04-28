@@ -316,7 +316,7 @@ public:
         }
     }
 
-    void render(SDL_Renderer *renderer, int cameraX, int cameraY) const
+    void render(SDL_Renderer *renderer, int cameraX, int cameraY, int windowWidth, int windowHeight) const
     {
         for (int y = 0; y < height; ++y)
         {
@@ -388,7 +388,8 @@ public:
                     static_cast<float>(cellSize),
                     static_cast<float>(cellSize)};
 
-                if (rect.x + rect.w > 0 && rect.x < 800 && rect.y + rect.h > 0 && rect.y < 600)
+                // Dynamic culling using passed parameters
+                if (rect.x + rect.w > 0 && rect.x < windowWidth && rect.y + rect.h > 0 && rect.y < windowHeight)
                 {
                     SDL_RenderFillRect(renderer, &rect);
                 }

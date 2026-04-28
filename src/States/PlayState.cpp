@@ -5,9 +5,13 @@
 #include <random>
 #include <cmath>
 
+constexpr int MAP_WIDTH = 200;
+constexpr int MAP_HEIGHT = 150;
+
 PlayState::PlayState(Game &gameRef)
-    : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0),
-      currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true)
+    : game(gameRef), gameMap(MAP_WIDTH, MAP_HEIGHT, 20), cameraX(0), cameraY(0),
+      currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true),
+      spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
     // --- Event Bindings ---
     dispatcher.sink<MeleeAttackEvent>().connect<&PlayState::onMeleeAttack>(this);
@@ -29,16 +33,16 @@ PlayState::PlayState(Game &gameRef)
     while (!gameMap.isFloor(startX, startY))
     {
         startX++;
-        if (startX >= 200)
+        if (startX >= MAP_WIDTH)
         {
             startX = 0;
             startY++;
-            if (startY >= 150)
+            if (startY >= MAP_HEIGHT)
                 startY = 0;
         }
     }
     registry.emplace<Position>(playerEntity, startX, startY);
-    spatialGrid[startY * 200 + startX] = playerEntity;
+    spatialGrid[startY * MAP_WIDTH + startX] = playerEntity;
 
     // --- Enemy Initialization ---
     std::mt19937 rng(std::random_device{}());
@@ -51,7 +55,10 @@ PlayState::PlayState(Game &gameRef)
         int ex = distX(rng);
         int ey = distY(rng);
 
-        while (!gameMap.isFloor(ex, ey) || (std::abs(ex - startX) < 10 && std::abs(ey - startY) < 10))
+        // Hardened: Ensure we don't spawn an enemy where one already exists
+        while (!gameMap.isFloor(ex, ey) ||
+               (std::abs(ex - startX) < 10 && std::abs(ey - startY) < 10) ||
+               spatialGrid[ey * MAP_WIDTH + ex] != entt::null)
         {
             ex = distX(rng);
             ey = distY(rng);
@@ -64,7 +71,7 @@ PlayState::PlayState(Game &gameRef)
         registry.emplace<Health>(enemyEntity, 20, 20);
         registry.emplace<CombatStats>(enemyEntity, 5, 2);
 
-        spatialGrid[ey * 200 + ex] = enemyEntity;
+        spatialGrid[ey * MAP_WIDTH + ex] = enemyEntity;
     }
 }
 
@@ -105,12 +112,12 @@ void PlayState::processInput()
                 while (!gameMap.isFloor(pos.x, pos.y))
                 {
                     pos.x++;
-                    if (pos.x >= 200)
+                    if (pos.x >= MAP_WIDTH)
                     {
                         pos.x = 0;
                         pos.y++;
                     }
-                    if (pos.y >= 150)
+                    if (pos.y >= MAP_HEIGHT)
                         pos.y = 0;
                 }
                 updateSpatialGrid(playerEntity, oldX, oldY, pos.x, pos.y);
@@ -183,8 +190,8 @@ void PlayState::update()
                 if (!path.empty())
                 {
                     int nextIndex = path[0];
-                    int nextX = nextIndex % 200;
-                    int nextY = nextIndex / 200;
+                    int nextX = nextIndex % MAP_WIDTH;
+                    int nextY = nextIndex / MAP_WIDTH;
 
                     if (getBlockingEntityAt(nextX, nextY) == entt::null && !(nextX == pos.x && nextY == pos.y))
                     {
@@ -212,10 +219,10 @@ void PlayState::update()
             cameraX = 0;
         if (cameraY < 0)
             cameraY = 0;
-        if (cameraX > (200 * 20) - game.getWindowWidth())
-            cameraX = (200 * 20) - game.getWindowWidth();
-        if (cameraY > (150 * 20) - game.getWindowHeight())
-            cameraY = (150 * 20) - game.getWindowHeight();
+        if (cameraX > (MAP_WIDTH * 20) - game.getWindowWidth())
+            cameraX = (MAP_WIDTH * 20) - game.getWindowWidth();
+        if (cameraY > (MAP_HEIGHT * 20) - game.getWindowHeight())
+            cameraY = (MAP_HEIGHT * 20) - game.getWindowHeight();
 
         needsFOVUpdate = false;
     }
@@ -228,7 +235,7 @@ void PlayState::render()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    gameMap.render(renderer, cameraX, cameraY);
+    gameMap.render(renderer, cameraX, cameraY, game.getWindowWidth(), game.getWindowHeight());
 
     auto view = registry.view<Position>();
     for (auto entity : view)
@@ -261,26 +268,33 @@ void PlayState::render()
     SDL_RenderPresent(renderer);
 }
 
+// --- Spatial Grid Management ---
+
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
 {
-    int oldIndex = oldY * 200 + oldX;
-    int newIndex = newY * 200 + newX;
-    if (spatialGrid.count(oldIndex) && spatialGrid[oldIndex] == entity)
+    // Bounds check to avoid segfaults
+    if (oldX >= 0 && oldY >= 0 && oldX < MAP_WIDTH && oldY < MAP_HEIGHT)
     {
-        spatialGrid.erase(oldIndex);
+        int oldIndex = oldY * MAP_WIDTH + oldX;
+        if (spatialGrid[oldIndex] == entity)
+        {
+            spatialGrid[oldIndex] = entt::null;
+        }
     }
-    spatialGrid[newIndex] = entity;
+
+    if (newX >= 0 && newY >= 0 && newX < MAP_WIDTH && newY < MAP_HEIGHT)
+    {
+        spatialGrid[newY * MAP_WIDTH + newX] = entity;
+    }
 }
 
 entt::entity PlayState::getBlockingEntityAt(int x, int y)
 {
-    int index = y * 200 + x;
-    auto it = spatialGrid.find(index);
-    if (it != spatialGrid.end())
-    {
-        return it->second;
-    }
-    return entt::null;
+    // Map bounds check
+    if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT)
+        return entt::null;
+
+    return spatialGrid[y * MAP_WIDTH + x];
 }
 
 // --- Event Listeners ---
@@ -318,10 +332,11 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
         if (registry.all_of<Position>(event.deadEntity))
         {
             auto &pos = registry.get<Position>(event.deadEntity);
-            int index = pos.y * 200 + pos.x;
-            if (spatialGrid.count(index) && spatialGrid[index] == event.deadEntity)
+            int index = pos.y * MAP_WIDTH + pos.x;
+
+            if (index >= 0 && index < 30000 && spatialGrid[index] == event.deadEntity)
             {
-                spatialGrid.erase(index);
+                spatialGrid[index] = entt::null;
             }
         }
 

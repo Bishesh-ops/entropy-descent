@@ -4,7 +4,7 @@
 #include "../Map.hpp"
 #include "../Events.hpp"
 #include <entt/entt.hpp>
-#include <unordered_map>
+#include <vector>
 
 enum class TurnState
 {
@@ -33,7 +33,7 @@ private:
     TurnState currentTurnState;
     bool needsFOVUpdate;
 
-    std::unordered_map<int, entt::entity> spatialGrid;
+    std::vector<entt::entity> spatialGrid;
 
     entt::entity getBlockingEntityAt(int x, int y);
     void updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY);
