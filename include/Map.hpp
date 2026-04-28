@@ -6,6 +6,15 @@
 #include <algorithm>
 #include <cmath>
 
+enum class TileState
+{
+    EMPTY,
+    WATER,
+    FIRE,
+    FROZEN,
+    SCORCHED
+};
+
 class Map
 {
 private:
@@ -48,11 +57,13 @@ private:
         }
         return region;
     }
+
     int width, height;
     int cellSize;
     std::vector<int> grid;
     std::vector<bool> visible;
     std::vector<bool> explored;
+    std::vector<TileState> tileStates;
 
     int getIndex(int x, int y) const
     {
@@ -162,7 +173,24 @@ public:
         grid.resize(width * height, 0);
         visible.resize(width * height, false);
         explored.resize(width * height, false);
+        tileStates.resize(width * height, TileState::EMPTY);
     }
+
+    TileState getTileState(int x, int y) const
+    {
+        if (x < 0 || y < 0 || x >= width || y >= height)
+            return TileState::EMPTY;
+        return tileStates[getIndex(x, y)];
+    }
+
+    void setTileState(int x, int y, TileState state)
+    {
+        if (x >= 0 && y >= 0 && x < width && y < height)
+        {
+            tileStates[getIndex(x, y)] = state;
+        }
+    }
+
     void processMap()
     {
         std::vector<std::vector<int>> regions;
@@ -205,9 +233,10 @@ public:
             }
         }
     }
+
     void generateCaves(int fillProbability, int iterations)
     {
-
+        std::fill(tileStates.begin(), tileStates.end(), TileState::EMPTY);
         std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, 100);
 
@@ -307,11 +336,50 @@ public:
                 }
                 else
                 {
-
                     if (visible[index])
-                        SDL_SetRenderDrawColor(renderer, 40, 40, 50, 255);
+                    {
+                        switch (tileStates[index])
+                        {
+                        case TileState::WATER:
+                            SDL_SetRenderDrawColor(renderer, 50, 100, 200, 255);
+                            break;
+                        case TileState::FIRE:
+                            SDL_SetRenderDrawColor(renderer, 200, 80, 20, 255);
+                            break;
+                        case TileState::FROZEN:
+                            SDL_SetRenderDrawColor(renderer, 150, 200, 255, 255);
+                            break;
+                        case TileState::SCORCHED:
+                            SDL_SetRenderDrawColor(renderer, 60, 30, 20, 255);
+                            break;
+                        case TileState::EMPTY:
+                        default:
+                            SDL_SetRenderDrawColor(renderer, 40, 40, 50, 255);
+                            break;
+                        }
+                    }
                     else
-                        SDL_SetRenderDrawColor(renderer, 15, 15, 20, 255);
+                    {
+                        switch (tileStates[index])
+                        {
+                        case TileState::WATER:
+                            SDL_SetRenderDrawColor(renderer, 25, 50, 100, 255);
+                            break;
+                        case TileState::FIRE:
+                            SDL_SetRenderDrawColor(renderer, 100, 40, 10, 255);
+                            break;
+                        case TileState::FROZEN:
+                            SDL_SetRenderDrawColor(renderer, 75, 100, 125, 255);
+                            break;
+                        case TileState::SCORCHED:
+                            SDL_SetRenderDrawColor(renderer, 30, 15, 10, 255);
+                            break;
+                        case TileState::EMPTY:
+                        default:
+                            SDL_SetRenderDrawColor(renderer, 15, 15, 20, 255);
+                            break;
+                        }
+                    }
                 }
 
                 SDL_FRect rect = {
