@@ -5,7 +5,8 @@
 #include <cmath>
 
 PlayState::PlayState(Game &gameRef)
-    : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0)
+    : game(gameRef), gameMap(200, 150, 20), cameraX(0), cameraY(0),
+      currentTurnState(TurnState::WAITING_FOR_PLAYER)
 {
 
     std::cout << "Generating massive world..." << std::endl;
@@ -70,6 +71,11 @@ void PlayState::processInput()
                 game.getStateMachine().popState();
                 return;
             }
+            // Don't process movement/actions if enemies are currently taking their turn
+            if (currentTurnState != TurnState::WAITING_FOR_PLAYER)
+                continue;
+
+            bool playerActed = false; // Flag to check if we actually spent a turn
 
             auto &pos = registry.get<Position>(playerEntity);
             int nextX = pos.x;
@@ -92,6 +98,7 @@ void PlayState::processInput()
                         pos.y = 0;
                     }
                 }
+                playerActed = true;
             }
 
             if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
@@ -102,12 +109,14 @@ void PlayState::processInput()
                 nextX--;
             if (event.key.key == SDLK_D || event.key.key == SDLK_RIGHT)
                 nextX++;
-            if (nextX != pos.x || nextY != pos.y) // Only check if we actually tried to move
+
+            if (nextX != pos.x || nextY != pos.y)
             {
                 if (!gameMap.isFloor(nextX, nextY))
                 {
                     // Bumped into a static wall
                     std::cout << "Bumped into a wall!" << std::endl;
+                    // Bumping a wall shouldn't spend a turn, so playerActed remains false
                 }
                 else
                 {
@@ -120,6 +129,7 @@ void PlayState::processInput()
                         if (registry.all_of<Enemy>(blocker))
                         {
                             std::cout << "Bumped into an Enemy! (Combat goes here)" << std::endl;
+                            playerActed = true; // Attacking spends a turn
                         }
                     }
                     else
@@ -127,16 +137,51 @@ void PlayState::processInput()
                         // Tile is walkable and clear
                         pos.x = nextX;
                         pos.y = nextY;
+                        playerActed = true; // Moving spends a turn
                     }
                 }
+            }
+
+            // If the player successfully moved, attacked, or used a skill, hand the turn to the enemies
+            if (playerActed)
+            {
+                currentTurnState = TurnState::ENEMY_TURN;
             }
         }
     }
 }
-
 void PlayState::update()
 {
     auto &pos = registry.get<Position>(playerEntity);
+    if (currentTurnState == TurnState::ENEMY_TURN)
+    {
+        auto view = registry.view<Position, Enemy>();
+        for (auto entity : view)
+        {
+            auto &enemyPos = view.get<Position>(entity);
+
+            // Calculate A* Path using the function we added to Map.hpp
+            auto path = gameMap.findPath(enemyPos.x, enemyPos.y, pos.x, pos.y);
+
+            // path[0] is the very next tile the enemy needs to step on
+            if (!path.empty())
+            {
+                int nextIndex = path[0];
+                int nextX = nextIndex % 200; // Map width is 200
+                int nextY = nextIndex / 200;
+
+                if (getBlockingEntityAt(nextX, nextY) == entt::null &&
+                    !(nextX == pos.x && nextY == pos.y)) // Don't step ON the player
+                {
+                    enemyPos.x = nextX;
+                    enemyPos.y = nextY;
+                }
+            }
+        }
+
+        // Once all enemies have moved, hand the turn back to the player
+        currentTurnState = TurnState::WAITING_FOR_PLAYER;
+    }
     gameMap.calculateFOV(pos.x, pos.y, 15);
     int playerPixelX = pos.x * 20;
     int playerPixelY = pos.y * 20;

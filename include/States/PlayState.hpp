@@ -4,6 +4,11 @@
 #include "../Map.hpp"
 #include <entt/entt.hpp>
 
+enum class TurnState
+{
+    WAITING_FOR_PLAYER,
+    ENEMY_TURN
+};
 class PlayState : public State
 {
 public:
@@ -23,4 +28,5 @@ private:
     int cameraY;
 
     entt::entity getBlockingEntityAt(int x, int y);
+    TurnState currentTurnState;
 };
