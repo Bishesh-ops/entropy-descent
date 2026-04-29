@@ -35,10 +35,12 @@ add_executable(Roguelike
     src/States/PlayState.cpp 
     src/DataLoader.cpp 
     src/UIRenderer.cpp
+    src/WorldBuilder.cpp        
     src/Systems/RenderSystem.cpp
     src/Systems/CombatSystem.cpp
     src/Systems/SpellSystem.cpp
     src/Systems/ItemSystem.cpp
+    src/Systems/AISystem.cpp   
 )
 target_include_directories(Roguelike PRIVATE include)
 

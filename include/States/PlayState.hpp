@@ -10,6 +10,7 @@
 #include "../Systems/CombatSystem.hpp"
 #include "../Systems/ItemSystem.hpp"
 #include "../Systems/SpellSystem.hpp"
+#include "../Systems/AISystem.hpp"
 #include <memory>
 
 enum class TurnState
@@ -47,6 +48,7 @@ private:
     std::unique_ptr<CombatSystem> combatSystem;
     std::unique_ptr<ItemSystem> itemSystem;
     std::unique_ptr<SpellSystem> spellSystem;
+    std::unique_ptr<AISystem> aiSystem;
 
     entt::entity getBlockingEntityAt(int x, int y);
     void updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY);
