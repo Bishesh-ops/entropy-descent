@@ -56,4 +56,30 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
             }
         }
     }
+    // --- 3. Entropy Bar ---
+    if (registry.all_of<EntropyStats>(playerEntity))
+    {
+        const auto &es = registry.get<EntropyStats>(playerEntity);
+        float entropyY = barY + barHeight + 10.0f + 15.0f + 10.0f;
+        float entropyPercent = std::clamp(es.entropy / 100.0f, 0.0f, 1.0f);
+
+        // Background
+        SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+        SDL_FRect eBg = {barX, entropyY, barWidth, 10.0f};
+        SDL_RenderFillRect(renderer, &eBg);
+
+        // Fill — green to red based on entropy
+        if (entropyPercent > 0.0f)
+        {
+            uint8_t r = static_cast<uint8_t>(255 * entropyPercent);
+            uint8_t g = static_cast<uint8_t>(255 * (1.0f - entropyPercent));
+            SDL_SetRenderDrawColor(renderer, r, g, 0, 255);
+            SDL_FRect eFill = {barX, entropyY, barWidth * entropyPercent, 10.0f};
+            SDL_RenderFillRect(renderer, &eFill);
+        }
+
+        // Border
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderRect(renderer, &eBg);
+    }
 }

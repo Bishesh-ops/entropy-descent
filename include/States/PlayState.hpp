@@ -25,6 +25,7 @@ private:
     Game &game;
 
     Map gameMap;
+    bool lastSpellSucceeded = false;
     entt::registry registry;
     entt::dispatcher dispatcher;
 

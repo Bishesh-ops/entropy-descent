@@ -25,10 +25,6 @@ PlayState::PlayState(Game &gameRef)
     std::cout << "Generating massive world..." << std::endl;
     gameMap.generateCaves(45, 5);
     gameMap.processMap();
-    // --- World Generation ---
-    std::cout << "Generating massive world..." << std::endl;
-    gameMap.generateCaves(45, 5);
-    gameMap.processMap();
 
     //  Entropic Sources (Water Pools)
     std::mt19937 poolRng(std::random_device{}());
@@ -216,7 +212,7 @@ void PlayState::processInput()
             if (event.key.key == SDLK_E)
             {
                 dispatcher.trigger(SpellCastEvent{playerEntity});
-                playerActed = true;
+                playerActed = lastSpellSucceeded;
             }
 
             // --- 'G' Key: Pick up item ---
@@ -331,6 +327,16 @@ void PlayState::update()
                 }
             }
         }
+
+        if (registry.all_of<EntropyStats>(playerEntity))
+        {
+            auto &eStats = registry.get<EntropyStats>(playerEntity);
+            if (eStats.entropy > 0)
+            {
+                eStats.entropy--;
+            }
+        }
+
         currentTurnState = TurnState::WAITING_FOR_PLAYER;
     }
 
@@ -411,7 +417,6 @@ void PlayState::update()
         }
     }
 }
-
 void PlayState::render()
 {
     SDL_Renderer *renderer = game.getRenderer();
@@ -537,6 +542,7 @@ void PlayState::onSpellCast(const SpellCastEvent &event)
     auto &pos = registry.get<Position>(event.caster);
 
     bool waterFound = false;
+    lastSpellSucceeded = waterFound;
     std::vector<std::pair<int, int>> waterTiles;
 
     // Scan Manhattan distance <= 4
