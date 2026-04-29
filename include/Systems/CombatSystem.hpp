@@ -1,6 +1,7 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <vector>
+#include <sol/sol.hpp>
 #include "../Events.hpp"
 #include "../Game.hpp"
 
