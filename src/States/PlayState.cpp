@@ -69,6 +69,34 @@ PlayState::PlayState(Game &gameRef)
         }
     }
 
+    // --- Entropic Sources (Fire Pools) ---
+    int numberOfFirePools = 15;
+    for (int i = 0; i < numberOfFirePools; ++i)
+    {
+        int cx = poolDistX(poolRng);
+        int cy = poolDistY(poolRng);
+
+        while (!gameMap.isFloor(cx, cy))
+        {
+            cx = poolDistX(poolRng);
+            cy = poolDistY(poolRng);
+        }
+
+        for (int dy = -1; dy <= 1; ++dy)
+        {
+            for (int dx = -1; dx <= 1; ++dx)
+            {
+                int tx = cx + dx;
+                int ty = cy + dy;
+
+                if (gameMap.isFloor(tx, ty) && poolChance(poolRng) < 60)
+                {
+                    gameMap.setTileState(tx, ty, TileState::FIRE);
+                }
+            }
+        }
+    }
+
     // --- Player Initialization ---
     playerEntity = registry.create();
     registry.emplace<Player>(playerEntity);
@@ -209,10 +237,17 @@ void PlayState::processInput()
                 playerActed = true;
             }
 
-            // --- 'E' Key: Trigger Entropic Exchange ---
+            // --- 'E' Key: Cryo Exchange ---
             if (event.key.key == SDLK_E)
             {
-                dispatcher.trigger(SpellCastEvent{playerEntity});
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::CRYO});
+                playerActed = lastSpellSucceeded;
+            }
+
+            // --- 'F' Key: Fire Exchange ---
+            if (event.key.key == SDLK_F)
+            {
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::FIRE});
                 playerActed = lastSpellSucceeded;
             }
             // --- 'U' For use item ---
@@ -396,9 +431,33 @@ void PlayState::update()
     pendingDestroy.clear();
 
     // --- Phantom Spawn Hook ---
+    // --- Phase 7: Entropy Thresholds & Cascade Hook ---
     auto &eStats = registry.get<EntropyStats>(playerEntity);
-    if (eStats.entropy > 60)
+
+    if (eStats.entropy >= 100)
     {
+        std::cout << "\n--- ENTROPY CRITICAL: VOW REQUIRED! ---\n";
+        std::cout << "(Placeholder for Phase 8: VowState Overlay)\n";
+        eStats.entropy = 50; // Temporarily reset so it doesn't spam every frame
+    }
+    else if (eStats.entropy >= 86)
+    {
+        // Cascade Level: Reality fractures. Floor tiles randomly combust.
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<int> distX(0, MAP_WIDTH - 1);
+        std::uniform_int_distribution<int> distY(0, MAP_HEIGHT - 1);
+        int cx = distX(rng);
+        int cy = distY(rng);
+
+        if (gameMap.isFloor(cx, cy) && gameMap.getTileState(cx, cy) == TileState::EMPTY)
+        {
+            gameMap.setTileState(cx, cy, TileState::FIRE);
+            std::cout << "Reality degrades... a tile combusts into FIRE.\n";
+        }
+    }
+    else if (eStats.entropy >= 61)
+    {
+        // Phantom Spawn Level
         int phantomCount = 0;
         for (auto e : registry.view<Phantom>())
             phantomCount++;
@@ -552,12 +611,12 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
 
 void PlayState::onSpellCast(const SpellCastEvent &event)
 {
-    if (!registry.all_of<Position>(event.caster))
+    if (!registry.valid(event.caster) || !registry.all_of<Position>(event.caster))
         return;
-    auto &pos = registry.get<Position>(event.caster);
 
-    bool waterFound = false;
-    std::vector<std::pair<int, int>> waterTiles;
+    auto &pos = registry.get<Position>(event.caster);
+    bool validTargetFound = false;
+    std::vector<std::pair<int, int>> targetTiles;
 
     // Scan Manhattan distance <= 4
     for (int dy = -4; dy <= 4; ++dy)
@@ -571,44 +630,100 @@ void PlayState::onSpellCast(const SpellCastEvent &event)
 
                 if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT)
                 {
-                    if (gameMap.getTileState(tx, ty) == TileState::WATER)
+                    TileState currentState = gameMap.getTileState(tx, ty);
+
+                    if (event.type == SpellCastEvent::SpellType::CRYO && currentState == TileState::WATER)
                     {
-                        waterTiles.push_back({tx, ty});
-                        waterFound = true;
+                        targetTiles.push_back({tx, ty});
+                        validTargetFound = true;
+                    }
+                    else if (event.type == SpellCastEvent::SpellType::FIRE && currentState == TileState::FIRE)
+                    {
+                        targetTiles.push_back({tx, ty});
+                        validTargetFound = true;
                     }
                 }
             }
         }
     }
 
-    if (waterFound)
+    if (validTargetFound)
     {
-        for (const auto &t : waterTiles)
-        {
-            gameMap.setTileState(t.first, t.second, TileState::FROZEN);
+        std::vector<entt::entity> hitEnemies;
 
-            entt::entity target = getBlockingEntityAt(t.first, t.second);
-            if (target != entt::null && registry.all_of<Enemy>(target))
+        for (const auto &t : targetTiles)
+        {
+            if (event.type == SpellCastEvent::SpellType::CRYO)
             {
-                // Dispatches an attack event using the player's combat logic
-                dispatcher.trigger(MeleeAttackEvent{event.caster, target});
+                gameMap.setTileState(t.first, t.second, TileState::FROZEN);
+            }
+            else if (event.type == SpellCastEvent::SpellType::FIRE)
+            {
+                gameMap.setTileState(t.first, t.second, TileState::SCORCHED);
+            }
+
+            // 3x3 AoE Blast around the siphoned tile for BOTH spells
+            for (int bY = -1; bY <= 1; ++bY)
+            {
+                for (int bX = -1; bX <= 1; ++bX)
+                {
+                    entt::entity aoeTarget = getBlockingEntityAt(t.first + bX, t.second + bY);
+
+                    // Safely check for Enemy component (Player won't take friendly fire!)
+                    if (aoeTarget != entt::null && registry.all_of<Enemy>(aoeTarget))
+                    {
+                        // Ensure we only hit each enemy once per cast
+                        if (std::find(hitEnemies.begin(), hitEnemies.end(), aoeTarget) == hitEnemies.end())
+                        {
+                            hitEnemies.push_back(aoeTarget);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply Damage based on spell type
+        for (auto enemy : hitEnemies)
+        {
+            if (event.type == SpellCastEvent::SpellType::CRYO)
+            {
+                // Cryo uses the player's physical combat stats
+                dispatcher.trigger(MeleeAttackEvent{event.caster, enemy});
+            }
+            else if (event.type == SpellCastEvent::SpellType::FIRE)
+            {
+                // Fire does heavy flat damage
+                if (registry.all_of<Health>(enemy))
+                {
+                    auto &hp = registry.get<Health>(enemy);
+                    hp.current -= 30;
+                    std::cout << "Entity " << static_cast<uint32_t>(enemy) << " caught in blast for 30 DMG! (HP: " << hp.current << ")\n";
+                    if (hp.current <= 0)
+                    {
+                        dispatcher.trigger(EntityDeathEvent{enemy});
+                    }
+                }
             }
         }
 
         if (registry.all_of<EntropyStats>(event.caster))
         {
             auto &stats = registry.get<EntropyStats>(event.caster);
-            stats.entropy += 25;
-            std::cout << "Entropic exchange successful! Entropy level: " << stats.entropy << std::endl;
+            if (event.type == SpellCastEvent::SpellType::CRYO)
+                stats.entropy += 25;
+            if (event.type == SpellCastEvent::SpellType::FIRE)
+                stats.entropy += 35;
+
+            std::cout << "Exchange successful! Entropy level: " << stats.entropy << std::endl;
         }
     }
     else
     {
         std::cout << "No entropic source nearby." << std::endl;
     }
-    lastSpellSucceeded = waterFound;
-}
 
+    lastSpellSucceeded = validTargetFound;
+}
 void PlayState::onItemUse(const ItemUseEvent &event)
 {
     if (!registry.valid(event.item) || !registry.all_of<ItemEffect>(event.item))

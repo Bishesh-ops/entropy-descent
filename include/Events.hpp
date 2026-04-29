@@ -15,6 +15,11 @@ struct EntityDeathEvent
 struct SpellCastEvent
 {
     entt::entity caster;
+    enum class SpellType
+    {
+        CRYO,
+        FIRE
+    } type;
 };
 struct ItemUseEvent
 {
