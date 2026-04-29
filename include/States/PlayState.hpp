@@ -27,11 +27,8 @@ private:
     Map gameMap;
     entt::registry registry;
     entt::dispatcher dispatcher;
-    std::vector<entt::entity> spatialGrid;
 
     UIRenderer uiRenderer;
-
-    entt::entity getBlockingEntityAt(int x, int y);
 
     entt::entity playerEntity;
     int cameraX;
