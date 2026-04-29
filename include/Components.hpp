@@ -63,3 +63,6 @@ struct EntropyStats
     bool hasPassiveAura = false; // Combat Vow
     bool healthLocked = false;   // Healing Vow
 };
+struct PendingDestroy
+{
+};

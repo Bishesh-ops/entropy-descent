@@ -14,8 +14,11 @@ CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher 
 
 void CombatSystem::update()
 {
-    // Deferred Destruction Cleanup
-    for (auto deadEntity : pendingDestroy)
+    auto view = registry.view<PendingDestroy>();
+
+    std::vector<entt::entity> toDestroy(view.begin(), view.end());
+
+    for (auto deadEntity : toDestroy)
     {
         if (registry.all_of<Position>(deadEntity))
         {
@@ -24,12 +27,11 @@ void CombatSystem::update()
 
             if (index >= 0 && index < (mapWidth * mapHeight) && spatialGrid[index] == deadEntity)
             {
-                spatialGrid[index] = entt::null; // Clear collision
+                spatialGrid[index] = entt::null; // Clear collision authority
             }
         }
         registry.destroy(deadEntity);
     }
-    pendingDestroy.clear();
 }
 
 void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event)
@@ -64,6 +66,7 @@ void CombatSystem::onEntityDeath(const EntityDeathEvent &event)
     else
     {
         std::cout << "Enemy shattered into entropy!" << std::endl;
+
         auto view = registry.view<Player, EntropyStats>();
         for (auto p : view)
         {
@@ -75,7 +78,10 @@ void CombatSystem::onEntityDeath(const EntityDeathEvent &event)
             }
         }
 
-        pendingDestroy.push_back(event.deadEntity);
+        if (!registry.all_of<PendingDestroy>(event.deadEntity))
+        {
+            registry.emplace<PendingDestroy>(event.deadEntity);
+        }
     }
 }
 

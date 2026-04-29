@@ -24,6 +24,4 @@ private:
     std::vector<entt::entity> &spatialGrid;
     int mapWidth;
     int mapHeight;
-
-    std::vector<entt::entity> pendingDestroy;
 };
