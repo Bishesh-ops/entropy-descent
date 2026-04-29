@@ -1,0 +1,19 @@
+{
+    "vows": {
+        "blind_seer": {
+            "name": "Vow of the Blind Seer",
+            "description": "Sacrifice 3 FOV. Spell AoE radius increased by 2.",
+            "type": "fov"
+        },
+        "pacifist": {
+            "name": "Vow of the Pacifist",
+            "description": "Sacrifice all physical Attack. Enemies in FOV take passive entropy damage.",
+            "type": "combat"
+        },
+        "martyr": {
+            "name": "Vow of the Martyr",
+            "description": "Maximum Health is locked. Killing enemies reduces Entropy.",
+            "type": "healing"
+        }
+    }
+}

@@ -9,4 +9,5 @@ public:
     static std::vector<EnemyDef> loadEnemyDefs(const std::string &filepath);
     static std::vector<ItemDef> loadItemDefs(const std::string &filepath);
     static std::vector<SpellDef> loadSpellDefs(const std::string &filepath);
+    static std::vector<VowDef> loadVowDefs(const std::string &filepath);
 };

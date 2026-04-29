@@ -21,8 +21,6 @@ void SpellSystem::onSpellCast(const SpellCastEvent &event)
     if (!registry.valid(event.caster) || !registry.all_of<Position>(event.caster))
         return;
     auto &pos = registry.get<Position>(event.caster);
-
-    // --- Pull data from JSON defs instead of magic numbers ---
     const SpellDef *def = nullptr;
     std::string searchName = (event.type == SpellCastEvent::SpellType::CRYO) ? "Cryo" : "Fire";
     for (const auto &s : loadedSpells)
@@ -72,10 +70,14 @@ void SpellSystem::onSpellCast(const SpellCastEvent &event)
         for (const auto &t : targetTiles)
         {
             gameMap.setTileState(t.first, t.second, (event.type == SpellCastEvent::SpellType::CRYO) ? TileState::FROZEN : TileState::SCORCHED);
-
-            for (int bY = -1; bY <= 1; ++bY)
+            int aoeRadius = 1;
+            if (registry.all_of<EntropyStats>(event.caster))
             {
-                for (int bX = -1; bX <= 1; ++bX)
+                aoeRadius += registry.get<EntropyStats>(event.caster).bonusAoE;
+            }
+            for (int bY = -aoeRadius; bY <= aoeRadius; ++bY)
+            {
+                for (int bX = -aoeRadius; bX <= aoeRadius; ++bX)
                 {
                     entt::entity aoeTarget = getBlockingEntityAt(t.first + bX, t.second + bY);
                     if (aoeTarget != entt::null && registry.all_of<Enemy>(aoeTarget))

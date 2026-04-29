@@ -26,3 +26,11 @@ struct SpellDef
     int damage;
     std::string element;
 };
+
+struct VowDef
+{
+    std::string id;
+    std::string name;
+    std::string description;
+    std::string type;
+};

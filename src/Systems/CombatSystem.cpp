@@ -64,6 +64,17 @@ void CombatSystem::onEntityDeath(const EntityDeathEvent &event)
     else
     {
         std::cout << "Enemy shattered into entropy!" << std::endl;
+        auto view = registry.view<Player, EntropyStats>();
+        for (auto p : view)
+        {
+            auto &eStats = view.get<EntropyStats>(p);
+            if (eStats.healthLocked)
+            {
+                eStats.entropy = std::max(0, eStats.entropy - 5);
+                std::cout << "Martyr's Vow siphons essence. Entropy reduced by 5! (Current: " << eStats.entropy << ")\n";
+            }
+        }
+
         pendingDestroy.push_back(event.deadEntity);
     }
 }
@@ -83,6 +94,11 @@ void CombatSystem::onHeal(const HealEvent &event)
 {
     if (!registry.valid(event.target) || !registry.all_of<Health>(event.target))
         return;
+    if (registry.all_of<EntropyStats>(event.target) && registry.get<EntropyStats>(event.target).healthLocked)
+    {
+        std::cout << "Your vitality is bound to the abyss. Healing failed!\n";
+        return;
+    }
     auto &hp = registry.get<Health>(event.target);
     hp.current = std::min(hp.max, hp.current + event.amount);
     std::cout << "Entity " << static_cast<uint32_t>(event.target) << " healed for " << event.amount << " HP! (HP: " << hp.current << ")\n";

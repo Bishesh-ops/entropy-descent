@@ -1,6 +1,7 @@
 #include "../../include/Systems/AISystem.hpp"
 #include "../../include/Components.hpp"
 #include <cmath>
+#include <iostream>
 
 AISystem::AISystem(entt::registry &reg, entt::dispatcher &disp, Map &mapRef, std::vector<entt::entity> &grid, int w, int h)
     : registry(reg), dispatcher(disp), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h) {}
@@ -36,7 +37,7 @@ void AISystem::update(entt::entity playerEntity)
     for (auto entity : view)
     {
         if (registry.all_of<Phantom>(entity))
-            continue; // Phantoms don't move
+            continue;
 
         auto &enemyPos = view.get<Position>(entity);
         int distToPlayer = std::abs(enemyPos.x - playerPos.x) + std::abs(enemyPos.y - playerPos.y);
@@ -60,6 +61,17 @@ void AISystem::update(entt::entity playerEntity)
                     enemyPos.x = nextX;
                     enemyPos.y = nextY;
                 }
+            }
+        }
+
+        if (registry.all_of<EntropyStats>(playerEntity))
+        {
+            auto &pStats = registry.get<EntropyStats>(playerEntity);
+
+            if (pStats.hasPassiveAura && gameMap.isVisible(enemyPos.x, enemyPos.y))
+            {
+                dispatcher.trigger(DamageEvent{entity, 5});
+                std::cout << "Enemy scorched by your Entropic Aura for 5 DMG!\n";
             }
         }
     }

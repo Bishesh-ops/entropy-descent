@@ -137,3 +137,30 @@ std::vector<SpellDef> DataLoader::loadSpellDefs(const std::string &filepath)
     }
     return defs;
 }
+
+std::vector<VowDef> DataLoader::loadVowDefs(const std::string &filepath)
+{
+    std::vector<VowDef> defs;
+    std::ifstream file(filepath);
+    if (!file.is_open())
+        return defs;
+    try
+    {
+        json j;
+        file >> j;
+        for (auto &[key, value] : j["vows"].items())
+        {
+            VowDef def;
+            def.id = key;
+            def.name = value.value("name", "Unknown Vow");
+            def.description = value.value("description", "???");
+            def.type = value.value("type", "none");
+            defs.push_back(def);
+        }
+    }
+    catch (json::parse_error &e)
+    {
+        std::cerr << "JSON Error: " << e.what() << "\n";
+    }
+    return defs;
+}

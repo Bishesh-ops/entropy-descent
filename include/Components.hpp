@@ -57,4 +57,9 @@ struct EntropyStats
 {
     int entropy = 0;
     int fovRadius = 15;
+
+    // --- Vow Mutations ---
+    int bonusAoE = 0;            // FOV Vow
+    bool hasPassiveAura = false; // Combat Vow
+    bool healthLocked = false;   // Healing Vow
 };
