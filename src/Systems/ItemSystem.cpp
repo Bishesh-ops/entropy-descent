@@ -5,6 +5,7 @@
 ItemSystem::ItemSystem(entt::registry &reg, entt::dispatcher &disp) : registry(reg), dispatcher(disp)
 {
     dispatcher.sink<ItemUseEvent>().connect<&ItemSystem::onItemUse>(this);
+    dispatcher.sink<ItemPickupEvent>().connect<&ItemSystem::onItemPickup>(this);
 }
 
 void ItemSystem::onItemUse(const ItemUseEvent &event)
@@ -59,17 +60,23 @@ void ItemSystem::onItemPickup(const ItemPickupEvent &event)
         }
     }
 
+    bool pickedSomething = false;
     if (pickedUp != entt::null)
     {
         if (static_cast<int>(inv.items.size()) < inv.maxCapacity)
         {
             inv.items.push_back(pickedUp);
-            registry.remove<Position>(pickedUp); // Removes from world!
+            registry.remove<Position>(pickedUp);
             std::cout << "Picked up item!\n";
+            pickedSomething = true;
         }
         else
         {
             std::cout << "Inventory is full!\n";
         }
+    }
+    if (event.successFlag)
+    {
+        *(event.successFlag) = pickedSomething;
     }
 }

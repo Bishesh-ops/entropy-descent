@@ -136,15 +136,74 @@ void PlayState::update()
     {
         aiSystem->update(playerEntity);
 
+        // --- Entropy Decay ---
         if (registry.all_of<EntropyStats>(playerEntity))
         {
             auto &eStats = registry.get<EntropyStats>(playerEntity);
             if (eStats.entropy > 0)
                 eStats.entropy--;
         }
+
+        // --- FIX 4 & 5: Entropy Thresholds & Cascade Hook (Turn Gated!) ---
+        auto &eStats = registry.get<EntropyStats>(playerEntity);
+
+        if (eStats.entropy >= 100)
+        {
+            std::cout << "\n--- ENTROPY CRITICAL: VOW REQUIRED! ---\n";
+            eStats.entropy = 50;
+        }
+        else if (eStats.entropy >= 86)
+        {
+            std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int> distX(0, MAP_WIDTH - 1);
+            std::uniform_int_distribution<int> distY(0, MAP_HEIGHT - 1);
+            int cx = distX(rng), cy = distY(rng);
+
+            if (gameMap.isFloor(cx, cy) && gameMap.getTileState(cx, cy) == TileState::EMPTY)
+            {
+                gameMap.setTileState(cx, cy, TileState::FIRE);
+                std::cout << "Reality degrades... a tile combusts into FIRE.\n";
+            }
+        }
+        else if (eStats.entropy >= 61)
+        {
+            int phantomCount = 0;
+            for (auto e : registry.view<Phantom>())
+                phantomCount++;
+
+            if (phantomCount < 2)
+            {
+                std::vector<int> visibleFloor;
+                for (int y = 0; y < MAP_HEIGHT; ++y)
+                {
+                    for (int x = 0; x < MAP_WIDTH; ++x)
+                    {
+                        if (gameMap.isFloor(x, y) && gameMap.isVisible(x, y) && spatialGrid[y * MAP_WIDTH + x] == entt::null)
+                        {
+                            visibleFloor.push_back(y * MAP_WIDTH + x);
+                        }
+                    }
+                }
+                if (!visibleFloor.empty())
+                {
+                    std::mt19937 rng(std::random_device{}());
+                    std::uniform_int_distribution<int> dist(0, visibleFloor.size() - 1);
+                    int targetIndex = visibleFloor[dist(rng)];
+
+                    auto phantom = registry.create();
+                    registry.emplace<Position>(phantom, targetIndex % MAP_WIDTH, targetIndex / MAP_WIDTH);
+                    registry.emplace<Enemy>(phantom);
+                    registry.emplace<Phantom>(phantom);
+                    registry.emplace<RenderColor>(phantom, static_cast<uint8_t>(180), static_cast<uint8_t>(0), static_cast<uint8_t>(180), static_cast<uint8_t>(180));
+                }
+            }
+        }
+
+        // Handoff back to player
         currentTurnState = TurnState::WAITING_FOR_PLAYER;
     }
 
+    // FOV & Camera follow outside the turn gate so it stays smooth
     if (needsFOVUpdate)
     {
         int dynamicFOV = registry.get<EntropyStats>(playerEntity).fovRadius;
@@ -156,63 +215,7 @@ void PlayState::update()
     }
 
     combatSystem->update();
-
-    // Entropy Thresholds & Cascade Hook
-    auto &eStats = registry.get<EntropyStats>(playerEntity);
-
-    if (eStats.entropy >= 100)
-    {
-        std::cout << "\n--- ENTROPY CRITICAL: VOW REQUIRED! ---\n";
-        eStats.entropy = 50;
-    }
-    else if (eStats.entropy >= 86)
-    {
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> distX(0, MAP_WIDTH - 1);
-        std::uniform_int_distribution<int> distY(0, MAP_HEIGHT - 1);
-        int cx = distX(rng), cy = distY(rng);
-
-        if (gameMap.isFloor(cx, cy) && gameMap.getTileState(cx, cy) == TileState::EMPTY)
-        {
-            gameMap.setTileState(cx, cy, TileState::FIRE);
-            std::cout << "Reality degrades... a tile combusts into FIRE.\n";
-        }
-    }
-    else if (eStats.entropy >= 61)
-    {
-        int phantomCount = 0;
-        for (auto e : registry.view<Phantom>())
-            phantomCount++;
-
-        if (phantomCount < 2)
-        {
-            std::vector<int> visibleFloor;
-            for (int y = 0; y < MAP_HEIGHT; ++y)
-            {
-                for (int x = 0; x < MAP_WIDTH; ++x)
-                {
-                    if (gameMap.isFloor(x, y) && gameMap.isVisible(x, y) && spatialGrid[y * MAP_WIDTH + x] == entt::null)
-                    {
-                        visibleFloor.push_back(y * MAP_WIDTH + x);
-                    }
-                }
-            }
-            if (!visibleFloor.empty())
-            {
-                std::mt19937 rng(std::random_device{}());
-                std::uniform_int_distribution<int> dist(0, visibleFloor.size() - 1);
-                int targetIndex = visibleFloor[dist(rng)];
-
-                auto phantom = registry.create();
-                registry.emplace<Position>(phantom, targetIndex % MAP_WIDTH, targetIndex / MAP_WIDTH);
-                registry.emplace<Enemy>(phantom);
-                registry.emplace<Phantom>(phantom);
-                registry.emplace<RenderColor>(phantom, static_cast<uint8_t>(180), static_cast<uint8_t>(0), static_cast<uint8_t>(180), static_cast<uint8_t>(180));
-            }
-        }
-    }
 }
-
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,
