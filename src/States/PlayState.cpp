@@ -557,7 +557,6 @@ void PlayState::onSpellCast(const SpellCastEvent &event)
     auto &pos = registry.get<Position>(event.caster);
 
     bool waterFound = false;
-    lastSpellSucceeded = waterFound;
     std::vector<std::pair<int, int>> waterTiles;
 
     // Scan Manhattan distance <= 4
@@ -607,6 +606,7 @@ void PlayState::onSpellCast(const SpellCastEvent &event)
     {
         std::cout << "No entropic source nearby." << std::endl;
     }
+    lastSpellSucceeded = waterFound;
 }
 
 void PlayState::onItemUse(const ItemUseEvent &event)
