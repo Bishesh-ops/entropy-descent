@@ -28,7 +28,14 @@ FetchContent_Declare(
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE) 
 FetchContent_MakeAvailable(json)
 
-add_executable(Roguelike src/main.cpp src/Game.cpp src/States/MenuState.cpp src/States/PlayState.cpp src/DataLoader.cpp)
+add_executable(Roguelike 
+    src/main.cpp 
+    src/Game.cpp 
+    src/States/MenuState.cpp 
+    src/States/PlayState.cpp 
+    src/DataLoader.cpp 
+    src/UIRenderer.cpp
+)
 target_include_directories(Roguelike PRIVATE include)
 
 # Link SDL3, EnTT, and JSON

@@ -256,7 +256,6 @@ void PlayState::render()
     {
         auto &pos = view.get<Position>(entity);
 
-        // --- CRITICAL FOV CULLING ---
         // If it's an enemy and the tile is NOT currently visible, skip drawing it entirely!
         if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
         {
@@ -292,8 +291,11 @@ void PlayState::render()
         SDL_RenderFillRect(renderer, &rect);
     }
 
+    uiRenderer.render(renderer, registry, playerEntity);
+
     SDL_RenderPresent(renderer);
 }
+
 // --- Spatial Grid Management ---
 
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)

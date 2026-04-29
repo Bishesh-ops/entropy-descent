@@ -3,6 +3,7 @@
 #include "../Game.hpp"
 #include "../Map.hpp"
 #include "../Events.hpp"
+#include "../UIRenderer.hpp"
 #include <entt/entt.hpp>
 #include <vector>
 
@@ -26,6 +27,11 @@ private:
     Map gameMap;
     entt::registry registry;
     entt::dispatcher dispatcher;
+    std::vector<entt::entity> spatialGrid;
+
+    UIRenderer uiRenderer;
+
+    entt::entity getBlockingEntityAt(int x, int y);
 
     entt::entity playerEntity;
     int cameraX;
