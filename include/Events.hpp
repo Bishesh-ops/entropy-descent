@@ -38,3 +38,7 @@ struct ItemUseEvent
     entt::entity user;
     entt::entity item;
 };
+struct ItemPickupEvent
+{
+    entt::entity user;
+};

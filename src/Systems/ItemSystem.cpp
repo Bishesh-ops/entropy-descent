@@ -37,3 +37,39 @@ void ItemSystem::onItemUse(const ItemUseEvent &event)
     }
     registry.destroy(event.item);
 }
+
+void ItemSystem::onItemPickup(const ItemPickupEvent &event)
+{
+    if (!registry.all_of<Position>(event.user) || !registry.all_of<Inventory>(event.user))
+        return;
+
+    auto &userPos = registry.get<Position>(event.user);
+    auto &inv = registry.get<Inventory>(event.user);
+
+    entt::entity pickedUp = entt::null;
+    auto view = registry.view<Position, Item>();
+
+    for (auto entity : view)
+    {
+        auto &itemPos = view.get<Position>(entity);
+        if (itemPos.x == userPos.x && itemPos.y == userPos.y)
+        {
+            pickedUp = entity;
+            break;
+        }
+    }
+
+    if (pickedUp != entt::null)
+    {
+        if (static_cast<int>(inv.items.size()) < inv.maxCapacity)
+        {
+            inv.items.push_back(pickedUp);
+            registry.remove<Position>(pickedUp); // Removes from world!
+            std::cout << "Picked up item!\n";
+        }
+        else
+        {
+            std::cout << "Inventory is full!\n";
+        }
+    }
+}
