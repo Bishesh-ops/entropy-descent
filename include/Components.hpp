@@ -30,3 +30,19 @@ struct RenderColor
 {
     uint8_t r, g, b, a;
 };
+
+struct Item
+{
+};
+
+struct ItemEffect
+{
+    std::string effectType;
+    int magnitude;
+};
+
+struct Inventory
+{
+    std::vector<entt::entity> items;
+    int maxCapacity = 10;
+};

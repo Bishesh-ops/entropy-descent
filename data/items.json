@@ -1,0 +1,16 @@
+{
+    "items": {
+        "vial_of_vitae": {
+            "name": "Vial of Vitae",
+            "effectType": "heal",
+            "magnitude": 25,
+            "color": [50, 255, 50, 255]
+        },
+        "entropic_shard": {
+            "name": "Entropic Shard",
+            "effectType": "damage_boost",
+            "magnitude": 5,
+            "color": [150, 0, 255, 255]
+        }
+    }
+}

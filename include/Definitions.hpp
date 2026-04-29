@@ -13,8 +13,11 @@ struct EnemyDef
 
 struct ItemDef
 {
+    std::string id;
     std::string name;
-    std::string description;
+    std::string effectType;
+    int magnitude;
+    uint8_t r, g, b, a;
 };
 struct SpellDef
 {

@@ -8,6 +8,8 @@
 
 constexpr int MAP_WIDTH = 200;
 constexpr int MAP_HEIGHT = 150;
+constexpr const char *ENEMY_DATA_PATH = "../data/enemies.json";
+constexpr const char *ITEM_DATA_PATH = "../data/items.json";
 
 PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(MAP_WIDTH, MAP_HEIGHT, 20), cameraX(0), cameraY(0),
@@ -86,6 +88,33 @@ PlayState::PlayState(Game &gameRef)
 
         spatialGrid[ey * MAP_WIDTH + ex] = enemyEntity;
     }
+
+    std::vector<ItemDef> itemArchetypes = DataLoader::loadItemDefs(ITEM_DATA_PATH);
+    if (!itemArchetypes.empty())
+    {
+        std::uniform_int_distribution<int> distItemArch(0, itemArchetypes.size() - 1);
+
+        for (int i = 0; i < 10; ++i)
+        {
+            int ix = distX(rng);
+            int iy = distY(rng);
+
+            // Items just need to be on the floor. They don't block the grid!
+            while (!gameMap.isFloor(ix, iy))
+            {
+                ix = distX(rng);
+                iy = distY(rng);
+            }
+
+            const ItemDef &def = itemArchetypes[distItemArch(rng)];
+
+            auto itemEntity = registry.create();
+            registry.emplace<Position>(itemEntity, ix, iy);
+            registry.emplace<Item>(itemEntity);
+            registry.emplace<ItemEffect>(itemEntity, def.effectType, def.magnitude);
+            registry.emplace<RenderColor>(itemEntity, def.r, def.g, def.b, def.a);
+        }
+    }
 }
 
 void PlayState::processInput()
@@ -135,6 +164,35 @@ void PlayState::processInput()
                 }
                 updateSpatialGrid(playerEntity, oldX, oldY, pos.x, pos.y);
                 playerActed = true;
+            }
+
+            if (event.key.key == SDLK_G)
+            {
+                auto view = registry.view<Position, Item>();
+                for (auto entity : view)
+                {
+                    auto &itemPos = view.get<Position>(entity);
+                    if (itemPos.x == pos.x && itemPos.y == pos.y)
+                    {
+                        auto &inv = registry.get<Inventory>(playerEntity);
+                        if (inv.items.size() < inv.maxCapacity)
+                        {
+                            inv.items.push_back(entity);
+
+                            // Stripping Position removes it from the world render loop,
+                            // effectively "storing" it in the player's inventory list!
+                            registry.remove<Position>(entity);
+
+                            std::cout << "Picked up item!" << std::endl;
+                            playerActed = true;
+                        }
+                        else
+                        {
+                            std::cout << "Inventory is full!" << std::endl;
+                        }
+                        break; // Only pick up one item per key press
+                    }
+                }
             }
 
             // Movement Handling
@@ -277,6 +335,18 @@ void PlayState::render()
             else
             {
                 SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Fallback Red
+            }
+        }
+        else if (registry.all_of<Item>(entity))
+        {
+            if (registry.all_of<RenderColor>(entity))
+            {
+                auto &color = registry.get<RenderColor>(entity);
+                SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+            }
+            else
+            {
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Fallback White
             }
         }
         else
