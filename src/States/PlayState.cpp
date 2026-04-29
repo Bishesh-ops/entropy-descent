@@ -20,6 +20,7 @@ PlayState::PlayState(Game &gameRef)
     dispatcher.sink<MeleeAttackEvent>().connect<&PlayState::onMeleeAttack>(this);
     dispatcher.sink<EntityDeathEvent>().connect<&PlayState::onEntityDeath>(this);
     dispatcher.sink<SpellCastEvent>().connect<&PlayState::onSpellCast>(this);
+    dispatcher.sink<ItemUseEvent>().connect<&PlayState::onItemUse>(this);
 
     // --- World Generation ---
     std::cout << "Generating massive world..." << std::endl;
@@ -214,7 +215,21 @@ void PlayState::processInput()
                 dispatcher.trigger(SpellCastEvent{playerEntity});
                 playerActed = lastSpellSucceeded;
             }
-
+            // --- 'U' For use item ---
+            if (event.key.key == SDLK_U)
+            {
+                auto &inv = registry.get<Inventory>(playerEntity);
+                if (!inv.items.empty())
+                {
+                    entt::entity itemToUse = inv.items[0];
+                    dispatcher.trigger(ItemUseEvent{playerEntity, itemToUse});
+                    playerActed = true;
+                }
+                else
+                {
+                    std::cout << "Nothing to use." << std::endl;
+                }
+            }
             // --- 'G' Key: Pick up item ---
             if (event.key.key == SDLK_G)
             {
@@ -592,4 +607,42 @@ void PlayState::onSpellCast(const SpellCastEvent &event)
     {
         std::cout << "No entropic source nearby." << std::endl;
     }
+}
+
+void PlayState::onItemUse(const ItemUseEvent &event)
+{
+    if (!registry.valid(event.item) || !registry.all_of<ItemEffect>(event.item))
+        return;
+
+    auto &effect = registry.get<ItemEffect>(event.item);
+
+    if (effect.effectType == "heal")
+    {
+        if (registry.all_of<Health>(event.user))
+        {
+            auto &health = registry.get<Health>(event.user);
+            health.current = std::min(health.max, health.current + effect.magnitude);
+            std::cout << "Consumed item. Healed for " << effect.magnitude << " HP! Current HP: " << health.current << std::endl;
+        }
+    }
+    else if (effect.effectType == "damage_boost")
+    {
+        if (registry.all_of<CombatStats>(event.user))
+        {
+            auto &stats = registry.get<CombatStats>(event.user);
+            stats.attack += effect.magnitude;
+            std::cout << "Consumed item. Attack permanently boosted by " << effect.magnitude << "!" << std::endl;
+        }
+    }
+
+    if (registry.all_of<Inventory>(event.user))
+    {
+        auto &inv = registry.get<Inventory>(event.user);
+        auto it = std::find(inv.items.begin(), inv.items.end(), event.item);
+        if (it != inv.items.end())
+        {
+            inv.items.erase(it);
+        }
+    }
+    registry.destroy(event.item);
 }

@@ -44,7 +44,16 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
 
             if (i < inv.items.size())
             {
-                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                entt::entity itemEntity = inv.items[i];
+                if (registry.all_of<RenderColor>(itemEntity))
+                {
+                    const auto &color = registry.get<RenderColor>(itemEntity);
+                    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+                }
+                else
+                {
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Fallback
+                }
                 SDL_RenderFillRect(renderer, &slotRect);
             }
             else

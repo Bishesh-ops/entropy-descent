@@ -16,3 +16,8 @@ struct SpellCastEvent
 {
     entt::entity caster;
 };
+struct ItemUseEvent
+{
+    entt::entity user;
+    entt::entity item;
+};

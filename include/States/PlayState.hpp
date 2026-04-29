@@ -46,4 +46,5 @@ private:
     void onMeleeAttack(const MeleeAttackEvent &event);
     void onEntityDeath(const EntityDeathEvent &event);
     void onSpellCast(const SpellCastEvent &event);
+    void onItemUse(const ItemUseEvent &event);
 };
