@@ -167,25 +167,32 @@ void PlayState::processInput()
             // --- 'G' Key: Pick up item ---
             if (event.key.key == SDLK_G)
             {
+                entt::entity pickedUp = entt::null;
                 auto view = registry.view<Position, Item>();
+
                 for (auto entity : view)
                 {
                     auto &itemPos = view.get<Position>(entity);
                     if (itemPos.x == pos.x && itemPos.y == pos.y)
                     {
-                        auto &inv = registry.get<Inventory>(playerEntity);
-                        if (inv.items.size() < inv.maxCapacity)
-                        {
-                            inv.items.push_back(entity);
-                            registry.remove<Position>(entity);
-                            std::cout << "Picked up item!" << std::endl;
-                            playerActed = true;
-                        }
-                        else
-                        {
-                            std::cout << "Inventory is full!" << std::endl;
-                        }
+                        pickedUp = entity;
                         break;
+                    }
+                }
+                if (pickedUp != entt::null)
+                {
+                    auto &inv = registry.get<Inventory>(playerEntity);
+                    if (static_cast<int>(inv.items.size()) < inv.maxCapacity)
+                    {
+                        inv.items.push_back(pickedUp);
+                        registry.remove<Position>(pickedUp); // Safe removal!
+
+                        std::cout << "Picked up item!" << std::endl;
+                        playerActed = true;
+                    }
+                    else
+                    {
+                        std::cout << "Inventory is full!" << std::endl;
                     }
                 }
             }
