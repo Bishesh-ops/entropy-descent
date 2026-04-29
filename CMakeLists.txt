@@ -31,16 +31,21 @@ FetchContent_MakeAvailable(json)
 add_executable(Roguelike 
     src/main.cpp 
     src/Game.cpp 
-    src/States/MenuState.cpp 
-    src/States/PlayState.cpp 
     src/DataLoader.cpp 
     src/UIRenderer.cpp
-    src/WorldBuilder.cpp        
+    src/WorldBuilder.cpp
+    
+    # States
+    src/States/MenuState.cpp 
+    src/States/PlayState.cpp 
+    src/States/VowState.cpp
+    
+    # Systems
     src/Systems/RenderSystem.cpp
     src/Systems/CombatSystem.cpp
     src/Systems/SpellSystem.cpp
     src/Systems/ItemSystem.cpp
-    src/Systems/AISystem.cpp   
+    src/Systems/AISystem.cpp
 )
 target_include_directories(Roguelike PRIVATE include)
 

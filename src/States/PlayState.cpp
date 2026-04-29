@@ -3,6 +3,7 @@
 #include "../../include/Components.hpp"
 #include "../../include/DataLoader.hpp"
 #include "../../include/WorldBuilder.hpp"
+#include "../../include/States/VowState.hpp"
 #include <iostream>
 #include <random>
 
@@ -144,13 +145,11 @@ void PlayState::update()
                 eStats.entropy--;
         }
 
-        // --- FIX 4 & 5: Entropy Thresholds & Cascade Hook (Turn Gated!) ---
         auto &eStats = registry.get<EntropyStats>(playerEntity);
 
         if (eStats.entropy >= 100)
         {
-            std::cout << "\n--- ENTROPY CRITICAL: VOW REQUIRED! ---\n";
-            eStats.entropy = 50;
+            game.getStateMachine().pushState(std::make_unique<VowState>(game, registry, playerEntity));
         }
         else if (eStats.entropy >= 86)
         {
