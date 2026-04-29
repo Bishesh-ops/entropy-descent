@@ -16,24 +16,27 @@ constexpr const char *COMBAT_SCRIPT_PATH = "../scripts/combat.lua";
 constexpr const char *AI_SCRIPT_PATH = "../scripts/ai.lua";
 
 PlayState::PlayState(Game &gameRef)
-    : game(gameRef), gameMap(MAP_WIDTH, MAP_HEIGHT, 20), cameraX(0), cameraY(0),
-      currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true),
+    : game(gameRef),
+      gameMap(MAP_WIDTH, MAP_HEIGHT, 20),
+      cameraX(0),
+      cameraY(0),
+      currentTurnState(TurnState::WAITING_FOR_PLAYER),
+      needsFOVUpdate(true),
       spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
-
+    // Initialize Lua
     lua.open_libraries(sol::lib::base, sol::lib::math);
     try
     {
         lua.script_file(COMBAT_SCRIPT_PATH);
         lua.script_file(AI_SCRIPT_PATH);
-        std::cout << "Lua: Scripts loaded successfully.\n";
     }
     catch (const sol::error &e)
     {
-        std::cerr << "Lua Error Loading Script: " << e.what() << "\n";
+        std::cerr << "Lua Error: " << e.what() << "\n";
     }
 
-    // Load Data
+    // Load JSON Data
     auto loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
     auto loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     auto loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
@@ -44,10 +47,9 @@ PlayState::PlayState(Game &gameRef)
     spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
     aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
 
-    // Generate World
+    // 4. Generate World
     playerEntity = WorldBuilder::generateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems);
 }
-
 void PlayState::processInput()
 {
     SDL_Event event;
@@ -99,7 +101,6 @@ void PlayState::processInput()
             }
             if (event.key.key == SDLK_G)
             {
-                // FIXED: Put the success flag check back so picking up thin air doesn't cost a turn!
                 bool success = false;
                 dispatcher.trigger(ItemPickupEvent{playerEntity, &success});
                 playerActed = success;

@@ -4,23 +4,30 @@
 #include <iostream>
 
 AISystem::AISystem(entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, Map &mapRef, std::vector<entt::entity> &grid, int w, int h)
-    : registry(reg), dispatcher(disp), lua(luaState), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h) {}
+    : registry(reg), dispatcher(disp), lua(luaState), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h)
+{
+}
 
 entt::entity AISystem::getBlockingEntityAt(int x, int y)
 {
     if (x < 0 || y < 0 || x >= mapWidth || y >= mapHeight)
         return entt::null;
+
     return spatialGrid[y * mapWidth + x];
 }
 
 void AISystem::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
 {
+
     if (oldX >= 0 && oldY >= 0 && oldX < mapWidth && oldY < mapHeight)
     {
         int oldIndex = oldY * mapWidth + oldX;
         if (spatialGrid[oldIndex] == entity)
+        {
             spatialGrid[oldIndex] = entt::null;
+        }
     }
+
     if (newX >= 0 && newY >= 0 && newX < mapWidth && newY < mapHeight)
     {
         spatialGrid[newY * mapWidth + newX] = entity;

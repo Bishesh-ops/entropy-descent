@@ -7,7 +7,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 # --- Dependencies ---
 find_package(SDL3 REQUIRED)
-find_package(Lua REQUIRED)
+find_package(Lua 5.4 EXACT REQUIRED)
 
 include(FetchContent)
 
