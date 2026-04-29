@@ -2,8 +2,8 @@
 #include "../../include/Components.hpp"
 #include <iostream>
 
-CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, std::vector<entt::entity> &grid, int w, int h)
-    : game(gameRef), registry(reg), dispatcher(disp), spatialGrid(grid), mapWidth(w), mapHeight(h)
+CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, std::vector<entt::entity> &grid, int w, int h)
+    : game(gameRef), registry(reg), dispatcher(disp), lua(luaState), spatialGrid(grid), mapWidth(w), mapHeight(h)
 {
     // Subscribe to events
     dispatcher.sink<MeleeAttackEvent>().connect<&CombatSystem::onMeleeAttack>(this);
@@ -43,7 +43,8 @@ void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event)
     auto &tHealth = registry.get<Health>(event.target);
     auto &tStats = registry.get<CombatStats>(event.target);
 
-    int damage = std::max(1, aStats.attack - tStats.defense);
+    int damage = lua["CalculateMeleeDamage"](aStats.attack, tStats.defense);
+
     tHealth.current -= damage;
 
     std::cout << "Entity " << static_cast<uint32_t>(event.attacker)

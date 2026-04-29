@@ -12,22 +12,37 @@ constexpr int MAP_HEIGHT = 150;
 constexpr const char *ENEMY_DATA_PATH = "../data/enemies.json";
 constexpr const char *ITEM_DATA_PATH = "../data/items.json";
 constexpr const char *SPELL_DATA_PATH = "../data/spells.json";
+constexpr const char *COMBAT_SCRIPT_PATH = "../scripts/combat.lua";
+constexpr const char *AI_SCRIPT_PATH = "../scripts/ai.lua";
 
 PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(MAP_WIDTH, MAP_HEIGHT, 20), cameraX(0), cameraY(0),
       currentTurnState(TurnState::WAITING_FOR_PLAYER), needsFOVUpdate(true),
       spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
+
+    lua.open_libraries(sol::lib::base, sol::lib::math);
+    try
+    {
+        lua.script_file(COMBAT_SCRIPT_PATH);
+        lua.script_file(AI_SCRIPT_PATH);
+        std::cout << "Lua: Scripts loaded successfully.\n";
+    }
+    catch (const sol::error &e)
+    {
+        std::cerr << "Lua Error Loading Script: " << e.what() << "\n";
+    }
+
     // Load Data
     auto loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
     auto loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     auto loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
 
     // Initialize Systems
-    combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+    combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, lua, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
     spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
-    aiSystem = std::make_unique<AISystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+    aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
 
     // Generate World
     playerEntity = WorldBuilder::generateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems);
@@ -84,8 +99,10 @@ void PlayState::processInput()
             }
             if (event.key.key == SDLK_G)
             {
-                dispatcher.trigger(ItemPickupEvent{playerEntity});
-                playerActed = true;
+                // FIXED: Put the success flag check back so picking up thin air doesn't cost a turn!
+                bool success = false;
+                dispatcher.trigger(ItemPickupEvent{playerEntity, &success});
+                playerActed = success;
             }
 
             if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
@@ -215,6 +232,7 @@ void PlayState::update()
 
     combatSystem->update();
 }
+
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,

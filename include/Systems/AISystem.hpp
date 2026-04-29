@@ -1,18 +1,20 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <vector>
+#include <sol/sol.hpp> // <-- ADDED
 #include "../Map.hpp"
 #include "../Events.hpp"
 
 class AISystem
 {
 public:
-    AISystem(entt::registry &reg, entt::dispatcher &disp, Map &mapRef, std::vector<entt::entity> &grid, int w, int h);
+    AISystem(entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, Map &mapRef, std::vector<entt::entity> &grid, int w, int h);
     void update(entt::entity playerEntity);
 
 private:
     entt::registry &registry;
     entt::dispatcher &dispatcher;
+    sol::state &lua;
     Map &gameMap;
     std::vector<entt::entity> &spatialGrid;
     int mapWidth;

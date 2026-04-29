@@ -8,8 +8,7 @@
 class CombatSystem
 {
 public:
-    CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, std::vector<entt::entity> &grid, int w, int h);
-
+    CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, std::vector<entt::entity> &grid, int w, int h);
     // Handles deferred destruction
     void update();
 
@@ -23,6 +22,7 @@ private:
     entt::registry &registry;
     entt::dispatcher &dispatcher;
     std::vector<entt::entity> &spatialGrid;
+    sol::state &lua;
     int mapWidth;
     int mapHeight;
 };

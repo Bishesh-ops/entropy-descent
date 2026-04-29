@@ -3,8 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-AISystem::AISystem(entt::registry &reg, entt::dispatcher &disp, Map &mapRef, std::vector<entt::entity> &grid, int w, int h)
-    : registry(reg), dispatcher(disp), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h) {}
+AISystem::AISystem(entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, Map &mapRef, std::vector<entt::entity> &grid, int w, int h)
+    : registry(reg), dispatcher(disp), lua(luaState), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h) {}
 
 entt::entity AISystem::getBlockingEntityAt(int x, int y)
 {
@@ -33,6 +33,22 @@ void AISystem::update(entt::entity playerEntity)
         return;
     auto &playerPos = registry.get<Position>(playerEntity);
 
+    int currentEntropy = 0;
+    if (registry.all_of<EntropyStats>(playerEntity))
+    {
+        currentEntropy = registry.get<EntropyStats>(playerEntity).entropy;
+    }
+
+    int aggroRadius = 15;
+    try
+    {
+        aggroRadius = lua["GetAggroRadius"](currentEntropy);
+    }
+    catch (const sol::error &e)
+    {
+        std::cerr << "Lua AI Error: " << e.what() << "\n";
+    }
+
     auto view = registry.view<Position, Enemy>();
     for (auto entity : view)
     {
@@ -46,7 +62,7 @@ void AISystem::update(entt::entity playerEntity)
         {
             dispatcher.trigger(MeleeAttackEvent{entity, playerEntity});
         }
-        else if (distToPlayer <= 15)
+        else if (distToPlayer <= aggroRadius)
         {
             auto path = gameMap.findPath(enemyPos.x, enemyPos.y, playerPos.x, playerPos.y);
             if (!path.empty())
@@ -67,7 +83,6 @@ void AISystem::update(entt::entity playerEntity)
         if (registry.all_of<EntropyStats>(playerEntity))
         {
             auto &pStats = registry.get<EntropyStats>(playerEntity);
-
             if (pStats.hasPassiveAura && gameMap.isVisible(enemyPos.x, enemyPos.y))
             {
                 dispatcher.trigger(DamageEvent{entity, 5});

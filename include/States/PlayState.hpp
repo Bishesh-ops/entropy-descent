@@ -4,6 +4,7 @@
 #include "../Map.hpp"
 #include "../Events.hpp"
 #include "../UIRenderer.hpp"
+#include <sol/sol.hpp>
 #include <entt/entt.hpp>
 #include <vector>
 #include "../Systems/RenderSystem.hpp"
@@ -34,6 +35,7 @@ private:
     bool lastSpellSucceeded = false;
     entt::registry registry;
     entt::dispatcher dispatcher;
+    sol::state lua;
 
     UIRenderer uiRenderer;
     RenderSystem renderSystem;
