@@ -31,6 +31,7 @@ PlayState::PlayState(Game &gameRef)
     registry.emplace<Collider>(playerEntity);
     registry.emplace<Health>(playerEntity, 100, 100);
     registry.emplace<CombatStats>(playerEntity, 10, 5);
+    registry.emplace<Inventory>(playerEntity); // Initialize player inventory
 
     int startX = 100, startY = 75;
     while (!gameMap.isFloor(startX, startY))
@@ -47,11 +48,12 @@ PlayState::PlayState(Game &gameRef)
     registry.emplace<Position>(playerEntity, startX, startY);
     spatialGrid[startY * MAP_WIDTH + startX] = playerEntity;
 
-    std::vector<EnemyDef> enemyArchetypes = DataLoader::loadEnemyDefs("../data/enemies.json");
+    // --- Enemy Initialization (Data-Driven) ---
+    std::vector<EnemyDef> enemyArchetypes = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
     if (enemyArchetypes.empty())
     {
         std::cerr << "WARNING: No enemy archetypes loaded! Using fallback." << std::endl;
-        enemyArchetypes.push_back({"Fallback", 20, 5, 2, 255, 0, 255, 255});
+        enemyArchetypes.push_back({"Fallback", 20, 5, 2, 255, 0, 0, 255});
     }
 
     std::mt19937 rng(std::random_device{}());
@@ -73,7 +75,6 @@ PlayState::PlayState(Game &gameRef)
             ey = distY(rng);
         }
 
-        // Pull the random archetype data from JSON
         const EnemyDef &def = enemyArchetypes[distArchetype(rng)];
 
         auto enemyEntity = registry.create();
@@ -82,13 +83,12 @@ PlayState::PlayState(Game &gameRef)
         registry.emplace<Collider>(enemyEntity);
         registry.emplace<Health>(enemyEntity, def.hp, def.hp);
         registry.emplace<CombatStats>(enemyEntity, def.attack, def.defense);
-
-        // Attach the parsed color to the entity!
         registry.emplace<RenderColor>(enemyEntity, def.r, def.g, def.b, def.a);
 
         spatialGrid[ey * MAP_WIDTH + ex] = enemyEntity;
     }
 
+    // --- Item Initialization ---
     std::vector<ItemDef> itemArchetypes = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     if (!itemArchetypes.empty())
     {
@@ -99,7 +99,6 @@ PlayState::PlayState(Game &gameRef)
             int ix = distX(rng);
             int iy = distY(rng);
 
-            // Items just need to be on the floor. They don't block the grid!
             while (!gameMap.isFloor(ix, iy))
             {
                 ix = distX(rng);
@@ -143,7 +142,6 @@ void PlayState::processInput()
             int nextX = pos.x;
             int nextY = pos.y;
 
-            // Debug: Regenerate Map
             if (event.key.key == SDLK_SPACE)
             {
                 gameMap.generateCaves(45, 5);
@@ -166,6 +164,7 @@ void PlayState::processInput()
                 playerActed = true;
             }
 
+            // --- 'G' Key: Pick up item ---
             if (event.key.key == SDLK_G)
             {
                 auto view = registry.view<Position, Item>();
@@ -178,11 +177,7 @@ void PlayState::processInput()
                         if (inv.items.size() < inv.maxCapacity)
                         {
                             inv.items.push_back(entity);
-
-                            // Stripping Position removes it from the world render loop,
-                            // effectively "storing" it in the player's inventory list!
                             registry.remove<Position>(entity);
-
                             std::cout << "Picked up item!" << std::endl;
                             playerActed = true;
                         }
@@ -190,12 +185,11 @@ void PlayState::processInput()
                         {
                             std::cout << "Inventory is full!" << std::endl;
                         }
-                        break; // Only pick up one item per key press
+                        break;
                     }
                 }
             }
 
-            // Movement Handling
             if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
                 nextY--;
             if (event.key.key == SDLK_S || event.key.key == SDLK_DOWN)
@@ -297,6 +291,23 @@ void PlayState::update()
 
         needsFOVUpdate = false;
     }
+
+    // --- Deferred Destruction Cleanup ---
+    for (auto deadEntity : pendingDestroy)
+    {
+        if (registry.all_of<Position>(deadEntity))
+        {
+            auto &deadPos = registry.get<Position>(deadEntity);
+            int index = deadPos.y * MAP_WIDTH + deadPos.x;
+
+            if (index >= 0 && index < (MAP_WIDTH * MAP_HEIGHT) && spatialGrid[index] == deadEntity)
+            {
+                spatialGrid[index] = entt::null;
+            }
+        }
+        registry.destroy(deadEntity);
+    }
+    pendingDestroy.clear();
 }
 
 void PlayState::render()
@@ -306,7 +317,6 @@ void PlayState::render()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    // Pass window bounds for dynamic culling
     gameMap.render(renderer, cameraX, cameraY, game.getWindowWidth(), game.getWindowHeight());
 
     auto view = registry.view<Position>();
@@ -314,11 +324,8 @@ void PlayState::render()
     {
         auto &pos = view.get<Position>(entity);
 
-        // If it's an enemy and the tile is NOT currently visible, skip drawing it entirely!
         if (registry.all_of<Enemy>(entity) && !gameMap.isVisible(pos.x, pos.y))
-        {
             continue;
-        }
 
         if (registry.all_of<Player>(entity))
         {
@@ -326,7 +333,6 @@ void PlayState::render()
         }
         else if (registry.all_of<Enemy>(entity))
         {
-            // Dynamically paint the enemy based on its JSON color
             if (registry.all_of<RenderColor>(entity))
             {
                 auto &color = registry.get<RenderColor>(entity);
@@ -334,7 +340,7 @@ void PlayState::render()
             }
             else
             {
-                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Fallback Red
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
             }
         }
         else if (registry.all_of<Item>(entity))
@@ -346,7 +352,7 @@ void PlayState::render()
             }
             else
             {
-                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Fallback White
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             }
         }
         else
@@ -362,15 +368,11 @@ void PlayState::render()
     }
 
     uiRenderer.render(renderer, registry, playerEntity);
-
     SDL_RenderPresent(renderer);
 }
 
-// --- Spatial Grid Management ---
-
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
 {
-    // Bounds check to avoid segfaults
     if (oldX >= 0 && oldY >= 0 && oldX < MAP_WIDTH && oldY < MAP_HEIGHT)
     {
         int oldIndex = oldY * MAP_WIDTH + oldX;
@@ -388,14 +390,10 @@ void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int n
 
 entt::entity PlayState::getBlockingEntityAt(int x, int y)
 {
-    // Map bounds check
     if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT)
         return entt::null;
-
     return spatialGrid[y * MAP_WIDTH + x];
 }
-
-// --- Event Listeners ---
 
 void PlayState::onMeleeAttack(const MeleeAttackEvent &event)
 {
@@ -426,18 +424,6 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
     else
     {
         std::cout << "Enemy shattered into entropy!" << std::endl;
-
-        if (registry.all_of<Position>(event.deadEntity))
-        {
-            auto &pos = registry.get<Position>(event.deadEntity);
-            int index = pos.y * MAP_WIDTH + pos.x;
-
-            if (index >= 0 && index < MAP_WIDTH * MAP_HEIGHT && spatialGrid[index] == event.deadEntity)
-            {
-                spatialGrid[index] = entt::null;
-            }
-        }
-
-        registry.destroy(event.deadEntity);
+        pendingDestroy.push_back(event.deadEntity); // Queue destruction for end of frame
     }
 }

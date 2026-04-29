@@ -28,8 +28,6 @@ private:
     entt::registry registry;
     entt::dispatcher dispatcher;
 
-    UIRenderer uiRenderer;
-
     entt::entity playerEntity;
     int cameraX;
     int cameraY;
@@ -37,6 +35,9 @@ private:
     bool needsFOVUpdate;
 
     std::vector<entt::entity> spatialGrid;
+    std::vector<entt::entity> pendingDestroy; // Defer destruction to avoid iterator invalidation
+
+    UIRenderer uiRenderer;
 
     entt::entity getBlockingEntityAt(int x, int y);
     void updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY);
