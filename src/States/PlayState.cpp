@@ -19,11 +19,58 @@ PlayState::PlayState(Game &gameRef)
     // --- Event Bindings ---
     dispatcher.sink<MeleeAttackEvent>().connect<&PlayState::onMeleeAttack>(this);
     dispatcher.sink<EntityDeathEvent>().connect<&PlayState::onEntityDeath>(this);
+    dispatcher.sink<SpellCastEvent>().connect<&PlayState::onSpellCast>(this);
 
     // --- World Generation ---
     std::cout << "Generating massive world..." << std::endl;
     gameMap.generateCaves(45, 5);
     gameMap.processMap();
+    // --- World Generation ---
+    std::cout << "Generating massive world..." << std::endl;
+    gameMap.generateCaves(45, 5);
+    gameMap.processMap();
+
+    //  Entropic Sources (Water Pools)
+    std::mt19937 poolRng(std::random_device{}());
+    std::uniform_int_distribution<int> poolDistX(2, MAP_WIDTH - 3);
+    std::uniform_int_distribution<int> poolDistY(2, MAP_HEIGHT - 3);
+    std::uniform_int_distribution<int> poolChance(0, 99);
+
+    int numberOfPools = 40;
+    for (int i = 0; i < numberOfPools; ++i)
+    {
+        int cx = poolDistX(poolRng);
+        int cy = poolDistY(poolRng);
+
+        // Find a random floor tile to act as the center of our puddle
+        while (!gameMap.isFloor(cx, cy))
+        {
+            cx = poolDistX(poolRng);
+            cy = poolDistY(poolRng);
+        }
+
+        // Splash water around the center tile organically
+        for (int dy = -2; dy <= 2; ++dy)
+        {
+            for (int dx = -2; dx <= 2; ++dx)
+            {
+                int tx = cx + dx;
+                int ty = cy + dy;
+
+                if (gameMap.isFloor(tx, ty))
+                {
+                    // The closer to the center, the higher the chance of water
+                    int dist = std::abs(dx) + std::abs(dy);
+                    int probability = 100 - (dist * 25);
+
+                    if (poolChance(poolRng) < probability)
+                    {
+                        gameMap.setTileState(tx, ty, TileState::WATER);
+                    }
+                }
+            }
+        }
+    }
 
     // --- Player Initialization ---
     playerEntity = registry.create();
@@ -31,7 +78,8 @@ PlayState::PlayState(Game &gameRef)
     registry.emplace<Collider>(playerEntity);
     registry.emplace<Health>(playerEntity, 100, 100);
     registry.emplace<CombatStats>(playerEntity, 10, 5);
-    registry.emplace<Inventory>(playerEntity); // Initialize player inventory
+    registry.emplace<Inventory>(playerEntity);
+    registry.emplace<EntropyStats>(playerEntity); // MVP Component
 
     int startX = 100, startY = 75;
     while (!gameMap.isFloor(startX, startY))
@@ -164,12 +212,18 @@ void PlayState::processInput()
                 playerActed = true;
             }
 
+            // --- 'E' Key: Trigger Entropic Exchange ---
+            if (event.key.key == SDLK_E)
+            {
+                dispatcher.trigger(SpellCastEvent{playerEntity});
+                playerActed = true;
+            }
+
             // --- 'G' Key: Pick up item ---
             if (event.key.key == SDLK_G)
             {
                 entt::entity pickedUp = entt::null;
                 auto view = registry.view<Position, Item>();
-
                 for (auto entity : view)
                 {
                     auto &itemPos = view.get<Position>(entity);
@@ -185,8 +239,7 @@ void PlayState::processInput()
                     if (static_cast<int>(inv.items.size()) < inv.maxCapacity)
                     {
                         inv.items.push_back(pickedUp);
-                        registry.remove<Position>(pickedUp); // Safe removal!
-
+                        registry.remove<Position>(pickedUp);
                         std::cout << "Picked up item!" << std::endl;
                         playerActed = true;
                     }
@@ -248,6 +301,10 @@ void PlayState::update()
         auto view = registry.view<Position, Enemy>();
         for (auto entity : view)
         {
+            // Phantom entities do not pathfind or act
+            if (registry.all_of<Phantom>(entity))
+                continue;
+
             auto &enemyPos = view.get<Position>(entity);
             int distToPlayer = std::abs(enemyPos.x - pos.x) + std::abs(enemyPos.y - pos.y);
 
@@ -279,7 +336,8 @@ void PlayState::update()
 
     if (needsFOVUpdate)
     {
-        gameMap.calculateFOV(pos.x, pos.y, 15);
+        int dynamicFOV = registry.get<EntropyStats>(playerEntity).fovRadius;
+        gameMap.calculateFOV(pos.x, pos.y, dynamicFOV);
 
         int playerPixelX = pos.x * 20;
         int playerPixelY = pos.y * 20;
@@ -315,6 +373,43 @@ void PlayState::update()
         registry.destroy(deadEntity);
     }
     pendingDestroy.clear();
+
+    // --- Phantom Spawn Hook ---
+    auto &eStats = registry.get<EntropyStats>(playerEntity);
+    if (eStats.entropy > 60)
+    {
+        int phantomCount = 0;
+        for (auto e : registry.view<Phantom>())
+            phantomCount++;
+
+        if (phantomCount < 2)
+        {
+            std::vector<int> visibleFloor;
+            for (int y = 0; y < MAP_HEIGHT; ++y)
+            {
+                for (int x = 0; x < MAP_WIDTH; ++x)
+                {
+                    if (gameMap.isFloor(x, y) && gameMap.isVisible(x, y) && spatialGrid[y * MAP_WIDTH + x] == entt::null)
+                    {
+                        visibleFloor.push_back(y * MAP_WIDTH + x);
+                    }
+                }
+            }
+
+            if (!visibleFloor.empty())
+            {
+                std::mt19937 rng(std::random_device{}());
+                std::uniform_int_distribution<int> dist(0, visibleFloor.size() - 1);
+                int targetIndex = visibleFloor[dist(rng)];
+
+                auto phantom = registry.create();
+                registry.emplace<Position>(phantom, targetIndex % MAP_WIDTH, targetIndex / MAP_WIDTH);
+                registry.emplace<Enemy>(phantom);
+                registry.emplace<Phantom>(phantom);
+                registry.emplace<RenderColor>(phantom, static_cast<uint8_t>(180), static_cast<uint8_t>(0), static_cast<uint8_t>(180), static_cast<uint8_t>(180));
+            }
+        }
+    }
 }
 
 void PlayState::render()
@@ -431,6 +526,64 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
     else
     {
         std::cout << "Enemy shattered into entropy!" << std::endl;
-        pendingDestroy.push_back(event.deadEntity); // Queue destruction for end of frame
+        pendingDestroy.push_back(event.deadEntity);
+    }
+}
+
+void PlayState::onSpellCast(const SpellCastEvent &event)
+{
+    if (!registry.all_of<Position>(event.caster))
+        return;
+    auto &pos = registry.get<Position>(event.caster);
+
+    bool waterFound = false;
+    std::vector<std::pair<int, int>> waterTiles;
+
+    // Scan Manhattan distance <= 4
+    for (int dy = -4; dy <= 4; ++dy)
+    {
+        for (int dx = -4; dx <= 4; ++dx)
+        {
+            if (std::abs(dx) + std::abs(dy) <= 4)
+            {
+                int tx = pos.x + dx;
+                int ty = pos.y + dy;
+
+                if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT)
+                {
+                    if (gameMap.getTileState(tx, ty) == TileState::WATER)
+                    {
+                        waterTiles.push_back({tx, ty});
+                        waterFound = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (waterFound)
+    {
+        for (const auto &t : waterTiles)
+        {
+            gameMap.setTileState(t.first, t.second, TileState::FROZEN);
+
+            entt::entity target = getBlockingEntityAt(t.first, t.second);
+            if (target != entt::null && registry.all_of<Enemy>(target))
+            {
+                // Dispatches an attack event using the player's combat logic
+                dispatcher.trigger(MeleeAttackEvent{event.caster, target});
+            }
+        }
+
+        if (registry.all_of<EntropyStats>(event.caster))
+        {
+            auto &stats = registry.get<EntropyStats>(event.caster);
+            stats.entropy += 25;
+            std::cout << "Entropic exchange successful! Entropy level: " << stats.entropy << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "No entropic source nearby." << std::endl;
     }
 }

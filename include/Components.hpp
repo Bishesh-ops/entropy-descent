@@ -49,3 +49,12 @@ struct Inventory
     std::vector<entt::entity> items;
     int maxCapacity = 10;
 };
+struct Phantom
+{
+};
+
+struct EntropyStats
+{
+    int entropy = 0;
+    int fovRadius = 15;
+};

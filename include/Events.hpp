@@ -11,3 +11,8 @@ struct EntityDeathEvent
 {
     entt::entity deadEntity;
 };
+
+struct SpellCastEvent
+{
+    entt::entity caster;
+};

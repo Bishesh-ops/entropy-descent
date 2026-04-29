@@ -35,7 +35,7 @@ private:
     bool needsFOVUpdate;
 
     std::vector<entt::entity> spatialGrid;
-    std::vector<entt::entity> pendingDestroy; // Defer destruction to avoid iterator invalidation
+    std::vector<entt::entity> pendingDestroy;
 
     UIRenderer uiRenderer;
 
@@ -44,4 +44,5 @@ private:
 
     void onMeleeAttack(const MeleeAttackEvent &event);
     void onEntityDeath(const EntityDeathEvent &event);
+    void onSpellCast(const SpellCastEvent &event);
 };
