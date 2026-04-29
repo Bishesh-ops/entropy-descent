@@ -56,7 +56,7 @@ add_executable(Roguelike
     src/Systems/ItemSystem.cpp
     src/Systems/AISystem.cpp
 )
-target_include_directories(Roguelike PRIVATE include)
+target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR})
 
 # Link SDL3, EnTT, and JSON
-target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 Lua::lua)
+target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
