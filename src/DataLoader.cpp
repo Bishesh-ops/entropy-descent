@@ -107,4 +107,33 @@ std::vector<ItemDef> DataLoader::loadItemDefs(const std::string &filepath)
 
     return defs;
 }
-std::vector<SpellDef> DataLoader::loadSpellDefs(const std::string &filepath) { return {}; }
+
+std::vector<SpellDef> DataLoader::loadSpellDefs(const std::string &filepath)
+{
+    std::vector<SpellDef> defs;
+    std::ifstream file(filepath);
+    if (!file.is_open())
+    {
+        std::cerr << "ERROR: Failed to open " << filepath << std::endl;
+        return defs;
+    }
+    try
+    {
+        json j;
+        file >> j;
+        for (auto &[key, value] : j["spells"].items())
+        {
+            SpellDef def;
+            def.name = value.value("name", "Unknown");
+            def.baseCost = value.value("baseCost", 0);
+            def.damage = value.value("damage", 0);
+            def.element = value.value("element", "none");
+            defs.push_back(def);
+        }
+    }
+    catch (json::parse_error &e)
+    {
+        std::cerr << "JSON parse error in " << filepath << ": " << e.what() << std::endl;
+    }
+    return defs;
+}

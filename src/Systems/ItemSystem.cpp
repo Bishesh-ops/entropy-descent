@@ -1,0 +1,39 @@
+#include "../../include/Systems/ItemSystem.hpp"
+#include "../../include/Components.hpp"
+#include <iostream>
+
+ItemSystem::ItemSystem(entt::registry &reg, entt::dispatcher &disp) : registry(reg), dispatcher(disp)
+{
+    dispatcher.sink<ItemUseEvent>().connect<&ItemSystem::onItemUse>(this);
+}
+
+void ItemSystem::onItemUse(const ItemUseEvent &event)
+{
+    if (!registry.valid(event.item) || !registry.all_of<ItemEffect>(event.item))
+        return;
+
+    auto &effect = registry.get<ItemEffect>(event.item);
+
+    if (effect.effectType == "heal")
+    {
+        dispatcher.trigger(HealEvent{event.user, effect.magnitude});
+    }
+    else if (effect.effectType == "damage_boost")
+    {
+        if (registry.all_of<CombatStats>(event.user))
+        {
+            auto &stats = registry.get<CombatStats>(event.user);
+            stats.attack += effect.magnitude;
+            std::cout << "Consumed item. Attack permanently boosted by " << effect.magnitude << "!\n";
+        }
+    }
+
+    if (registry.all_of<Inventory>(event.user))
+    {
+        auto &inv = registry.get<Inventory>(event.user);
+        auto it = std::find(inv.items.begin(), inv.items.end(), event.item);
+        if (it != inv.items.end())
+            inv.items.erase(it);
+    }
+    registry.destroy(event.item);
+}

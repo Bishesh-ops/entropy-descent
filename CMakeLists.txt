@@ -36,6 +36,9 @@ add_executable(Roguelike
     src/DataLoader.cpp 
     src/UIRenderer.cpp
     src/Systems/RenderSystem.cpp
+    src/Systems/CombatSystem.cpp
+    src/Systems/SpellSystem.cpp
+    src/Systems/ItemSystem.cpp
 )
 target_include_directories(Roguelike PRIVATE include)
 

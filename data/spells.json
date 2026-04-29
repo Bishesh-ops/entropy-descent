@@ -1,0 +1,16 @@
+{
+    "spells": {
+        "cryo": {
+            "name": "Cryo",
+            "baseCost": 25,
+            "damage": 0,
+            "element": "water"
+        },
+        "fire": {
+            "name": "Fire",
+            "baseCost": 35,
+            "damage": 30,
+            "element": "fire"
+        }
+    }
+}

@@ -7,6 +7,10 @@
 #include <entt/entt.hpp>
 #include <vector>
 #include "../Systems/RenderSystem.hpp"
+#include "../Systems/CombatSystem.hpp"
+#include "../Systems/ItemSystem.hpp"
+#include "../Systems/SpellSystem.hpp"
+#include <memory>
 
 enum class TurnState
 {
@@ -40,13 +44,10 @@ private:
     bool needsFOVUpdate;
 
     std::vector<entt::entity> spatialGrid;
-    std::vector<entt::entity> pendingDestroy;
+    std::unique_ptr<CombatSystem> combatSystem;
+    std::unique_ptr<ItemSystem> itemSystem;
+    std::unique_ptr<SpellSystem> spellSystem;
 
     entt::entity getBlockingEntityAt(int x, int y);
     void updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY);
-
-    void onMeleeAttack(const MeleeAttackEvent &event);
-    void onEntityDeath(const EntityDeathEvent &event);
-    void onSpellCast(const SpellCastEvent &event);
-    void onItemUse(const ItemUseEvent &event);
 };

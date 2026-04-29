@@ -6,10 +6,20 @@ struct MeleeAttackEvent
     entt::entity attacker;
     entt::entity target;
 };
-
 struct EntityDeathEvent
 {
     entt::entity deadEntity;
+};
+
+struct DamageEvent
+{
+    entt::entity target;
+    int damage;
+};
+struct HealEvent
+{
+    entt::entity target;
+    int amount;
 };
 
 struct SpellCastEvent
@@ -20,7 +30,9 @@ struct SpellCastEvent
         CRYO,
         FIRE
     } type;
+    bool *successFlag = nullptr;
 };
+
 struct ItemUseEvent
 {
     entt::entity user;

@@ -10,6 +10,7 @@ constexpr int MAP_WIDTH = 200;
 constexpr int MAP_HEIGHT = 150;
 constexpr const char *ENEMY_DATA_PATH = "../data/enemies.json";
 constexpr const char *ITEM_DATA_PATH = "../data/items.json";
+constexpr const char *SPELL_DATA_PATH = "../data/spells.json";
 
 PlayState::PlayState(Game &gameRef)
     : game(gameRef), gameMap(MAP_WIDTH, MAP_HEIGHT, 20), cameraX(0), cameraY(0),
@@ -17,10 +18,10 @@ PlayState::PlayState(Game &gameRef)
       spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
     // --- Event Bindings ---
-    dispatcher.sink<MeleeAttackEvent>().connect<&PlayState::onMeleeAttack>(this);
-    dispatcher.sink<EntityDeathEvent>().connect<&PlayState::onEntityDeath>(this);
-    dispatcher.sink<SpellCastEvent>().connect<&PlayState::onSpellCast>(this);
-    dispatcher.sink<ItemUseEvent>().connect<&PlayState::onItemUse>(this);
+    combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+    std::vector<SpellDef> loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
+    itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
+    spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
 
     // --- World Generation ---
     std::cout << "Generating massive world..." << std::endl;
@@ -240,15 +241,17 @@ void PlayState::processInput()
             // --- 'E' Key: Cryo Exchange ---
             if (event.key.key == SDLK_E)
             {
-                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::CRYO});
-                playerActed = lastSpellSucceeded;
+                bool success = false;
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::CRYO, &success});
+                playerActed = success;
             }
 
             // --- 'F' Key: Fire Exchange ---
             if (event.key.key == SDLK_F)
             {
-                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::FIRE});
-                playerActed = lastSpellSucceeded;
+                bool success = false;
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::FIRE, &success});
+                playerActed = success;
             }
             // --- 'U' For use item ---
             if (event.key.key == SDLK_U)
@@ -414,24 +417,9 @@ void PlayState::update()
     }
 
     // --- Deferred Destruction Cleanup ---
-    for (auto deadEntity : pendingDestroy)
-    {
-        if (registry.all_of<Position>(deadEntity))
-        {
-            auto &deadPos = registry.get<Position>(deadEntity);
-            int index = deadPos.y * MAP_WIDTH + deadPos.x;
-
-            if (index >= 0 && index < (MAP_WIDTH * MAP_HEIGHT) && spatialGrid[index] == deadEntity)
-            {
-                spatialGrid[index] = entt::null;
-            }
-        }
-        registry.destroy(deadEntity);
-    }
-    pendingDestroy.clear();
-
+    combatSystem->update();
     // --- Phantom Spawn Hook ---
-    // --- Phase 7: Entropy Thresholds & Cascade Hook ---
+    // --- ntropy Thresholds & Cascade Hook ---
     auto &eStats = registry.get<EntropyStats>(playerEntity);
 
     if (eStats.entropy >= 100)
@@ -520,190 +508,4 @@ entt::entity PlayState::getBlockingEntityAt(int x, int y)
     if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT)
         return entt::null;
     return spatialGrid[y * MAP_WIDTH + x];
-}
-
-void PlayState::onMeleeAttack(const MeleeAttackEvent &event)
-{
-    auto &aStats = registry.get<CombatStats>(event.attacker);
-    auto &tHealth = registry.get<Health>(event.target);
-    auto &tStats = registry.get<CombatStats>(event.target);
-
-    int damage = std::max(1, aStats.attack - tStats.defense);
-    tHealth.current -= damage;
-
-    std::cout << "Entity " << static_cast<uint32_t>(event.attacker)
-              << " hit Entity " << static_cast<uint32_t>(event.target)
-              << " for " << damage << " dmg! (HP: " << tHealth.current << ")" << std::endl;
-
-    if (tHealth.current <= 0)
-    {
-        dispatcher.trigger(EntityDeathEvent{event.target});
-    }
-}
-
-void PlayState::onEntityDeath(const EntityDeathEvent &event)
-{
-    if (registry.all_of<Player>(event.deadEntity))
-    {
-        std::cout << "YOU HAVE DESCENDED. GAME OVER." << std::endl;
-        game.quit();
-    }
-    else
-    {
-        std::cout << "Enemy shattered into entropy!" << std::endl;
-        pendingDestroy.push_back(event.deadEntity);
-    }
-}
-
-void PlayState::onSpellCast(const SpellCastEvent &event)
-{
-    if (!registry.valid(event.caster) || !registry.all_of<Position>(event.caster))
-        return;
-
-    auto &pos = registry.get<Position>(event.caster);
-    bool validTargetFound = false;
-    std::vector<std::pair<int, int>> targetTiles;
-
-    // Scan Manhattan distance <= 4
-    for (int dy = -4; dy <= 4; ++dy)
-    {
-        for (int dx = -4; dx <= 4; ++dx)
-        {
-            if (std::abs(dx) + std::abs(dy) <= 4)
-            {
-                int tx = pos.x + dx;
-                int ty = pos.y + dy;
-
-                if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT)
-                {
-                    TileState currentState = gameMap.getTileState(tx, ty);
-
-                    if (event.type == SpellCastEvent::SpellType::CRYO && currentState == TileState::WATER)
-                    {
-                        targetTiles.push_back({tx, ty});
-                        validTargetFound = true;
-                    }
-                    else if (event.type == SpellCastEvent::SpellType::FIRE && currentState == TileState::FIRE)
-                    {
-                        targetTiles.push_back({tx, ty});
-                        validTargetFound = true;
-                    }
-                }
-            }
-        }
-    }
-
-    if (validTargetFound)
-    {
-        std::vector<entt::entity> hitEnemies;
-
-        for (const auto &t : targetTiles)
-        {
-            if (event.type == SpellCastEvent::SpellType::CRYO)
-            {
-                gameMap.setTileState(t.first, t.second, TileState::FROZEN);
-            }
-            else if (event.type == SpellCastEvent::SpellType::FIRE)
-            {
-                gameMap.setTileState(t.first, t.second, TileState::SCORCHED);
-            }
-
-            // 3x3 AoE Blast around the siphoned tile for BOTH spells
-            for (int bY = -1; bY <= 1; ++bY)
-            {
-                for (int bX = -1; bX <= 1; ++bX)
-                {
-                    entt::entity aoeTarget = getBlockingEntityAt(t.first + bX, t.second + bY);
-
-                    // Safely check for Enemy component (Player won't take friendly fire!)
-                    if (aoeTarget != entt::null && registry.all_of<Enemy>(aoeTarget))
-                    {
-                        // Ensure we only hit each enemy once per cast
-                        if (std::find(hitEnemies.begin(), hitEnemies.end(), aoeTarget) == hitEnemies.end())
-                        {
-                            hitEnemies.push_back(aoeTarget);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Apply Damage based on spell type
-        for (auto enemy : hitEnemies)
-        {
-            if (event.type == SpellCastEvent::SpellType::CRYO)
-            {
-                // Cryo uses the player's physical combat stats
-                dispatcher.trigger(MeleeAttackEvent{event.caster, enemy});
-            }
-            else if (event.type == SpellCastEvent::SpellType::FIRE)
-            {
-                // Fire does heavy flat damage
-                if (registry.all_of<Health>(enemy))
-                {
-                    auto &hp = registry.get<Health>(enemy);
-                    hp.current -= 30;
-                    std::cout << "Entity " << static_cast<uint32_t>(enemy) << " caught in blast for 30 DMG! (HP: " << hp.current << ")\n";
-                    if (hp.current <= 0)
-                    {
-                        dispatcher.trigger(EntityDeathEvent{enemy});
-                    }
-                }
-            }
-        }
-
-        if (registry.all_of<EntropyStats>(event.caster))
-        {
-            auto &stats = registry.get<EntropyStats>(event.caster);
-            if (event.type == SpellCastEvent::SpellType::CRYO)
-                stats.entropy += 25;
-            if (event.type == SpellCastEvent::SpellType::FIRE)
-                stats.entropy += 35;
-
-            std::cout << "Exchange successful! Entropy level: " << stats.entropy << std::endl;
-        }
-    }
-    else
-    {
-        std::cout << "No entropic source nearby." << std::endl;
-    }
-
-    lastSpellSucceeded = validTargetFound;
-}
-void PlayState::onItemUse(const ItemUseEvent &event)
-{
-    if (!registry.valid(event.item) || !registry.all_of<ItemEffect>(event.item))
-        return;
-
-    auto &effect = registry.get<ItemEffect>(event.item);
-
-    if (effect.effectType == "heal")
-    {
-        if (registry.all_of<Health>(event.user))
-        {
-            auto &health = registry.get<Health>(event.user);
-            health.current = std::min(health.max, health.current + effect.magnitude);
-            std::cout << "Consumed item. Healed for " << effect.magnitude << " HP! Current HP: " << health.current << std::endl;
-        }
-    }
-    else if (effect.effectType == "damage_boost")
-    {
-        if (registry.all_of<CombatStats>(event.user))
-        {
-            auto &stats = registry.get<CombatStats>(event.user);
-            stats.attack += effect.magnitude;
-            std::cout << "Consumed item. Attack permanently boosted by " << effect.magnitude << "!" << std::endl;
-        }
-    }
-
-    if (registry.all_of<Inventory>(event.user))
-    {
-        auto &inv = registry.get<Inventory>(event.user);
-        auto it = std::find(inv.items.begin(), inv.items.end(), event.item);
-        if (it != inv.items.end())
-        {
-            inv.items.erase(it);
-        }
-    }
-    registry.destroy(event.item);
 }
