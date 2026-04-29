@@ -49,7 +49,7 @@ PlayState::PlayState(Game &gameRef)
     if (enemyArchetypes.empty())
     {
         std::cerr << "WARNING: No enemy archetypes loaded! Using fallback." << std::endl;
-        enemyArchetypes.push_back({"Fallback", 20, 5, 2});
+        enemyArchetypes.push_back({"Fallback", 20, 5, 2, 255, 0, 255, 255});
     }
 
     std::mt19937 rng(std::random_device{}());
@@ -360,7 +360,7 @@ void PlayState::onEntityDeath(const EntityDeathEvent &event)
             auto &pos = registry.get<Position>(event.deadEntity);
             int index = pos.y * MAP_WIDTH + pos.x;
 
-            if (index >= 0 && index < 30000 && spatialGrid[index] == event.deadEntity)
+            if (index >= 0 && index < MAP_WIDTH * MAP_HEIGHT && spatialGrid[index] == event.deadEntity)
             {
                 spatialGrid[index] = entt::null;
             }
