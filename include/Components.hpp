@@ -66,3 +66,7 @@ struct EntropyStats
 struct PendingDestroy
 {
 };
+
+struct Stairs
+{
+};

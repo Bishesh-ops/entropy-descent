@@ -1,7 +1,7 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <vector>
-#include <sol/sol.hpp> // <-- ADDED
+#include <sol/sol.hpp>
 #include "../Map.hpp"
 #include "../Events.hpp"
 

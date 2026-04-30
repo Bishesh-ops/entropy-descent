@@ -43,3 +43,7 @@ struct ItemPickupEvent
     entt::entity user;
     bool *successFlag = nullptr; // Added for turn-gating
 };
+
+struct DescendEvent
+{
+};

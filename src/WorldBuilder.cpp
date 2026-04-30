@@ -7,7 +7,8 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
                                          int mapWidth, int mapHeight,
                                          const std::vector<EnemyDef> &enemies, const std::vector<ItemDef> &items)
 {
-    std::cout << "Generating massive world...\n";
+    std::fill(spatialGrid.begin(), spatialGrid.end(), static_cast<entt::entity>(entt::null));
+
     gameMap.generateCaves(45, 5);
     gameMap.processMap();
 
@@ -119,5 +120,111 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
         }
     }
 
+    int playerX = registry.get<Position>(playerEntity).x;
+    int playerY = registry.get<Position>(playerEntity).y;
+    while (true)
+    {
+        int sx = rand() % mapWidth;
+        int sy = rand() % mapHeight;
+        if (gameMap.isFloor(sx, sy) && spatialGrid[sy * mapWidth + sx] == entt::null)
+        {
+            int dist = std::abs(sx - playerX) + std::abs(sy - playerY);
+            if (dist >= 30)
+            {
+                auto stairs = registry.create();
+                registry.emplace<Position>(stairs, sx, sy);
+                registry.emplace<Stairs>(stairs);
+                // Stairs don't go in the spatial grid!
+                break;
+            }
+        }
+    }
+
     return playerEntity;
+}
+
+void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::vector<entt::entity> &spatialGrid, int mapWidth, int mapHeight, const std::vector<EnemyDef> &enemies, const std::vector<ItemDef> &items, entt::entity existingPlayer, int floorDepth)
+{
+    std::fill(spatialGrid.begin(), spatialGrid.end(), static_cast<entt::entity>(entt::null));
+
+    gameMap.generateCaves(45, 5);
+    gameMap.processMap();
+
+    // Place existing player
+    int startX, startY;
+    while (true)
+    {
+        startX = rand() % mapWidth;
+        startY = rand() % mapHeight;
+        if (gameMap.isFloor(startX, startY))
+        {
+            registry.replace<Position>(existingPlayer, startX, startY);
+            spatialGrid[startY * mapWidth + startX] = existingPlayer;
+            break;
+        }
+    }
+
+    // Spawn 60 Scaled Enemies
+    if (!enemies.empty())
+    {
+        float scaleMultiplier = 1.0f + ((floorDepth - 1) * 0.15f);
+        for (int i = 0; i < 60; ++i)
+        {
+            while (true)
+            {
+                int ex = rand() % mapWidth;
+                int ey = rand() % mapHeight;
+                if (gameMap.isFloor(ex, ey) && spatialGrid[ey * mapWidth + ex] == entt::null)
+                {
+                    const auto &def = enemies[rand() % enemies.size()];
+                    auto enemy = registry.create();
+                    registry.emplace<Position>(enemy, ex, ey);
+                    registry.emplace<RenderColor>(enemy, def.r, def.g, def.b, static_cast<uint8_t>(255));
+                    registry.emplace<Enemy>(enemy);
+                    registry.emplace<Health>(enemy, static_cast<int>(def.hp * scaleMultiplier));
+                    registry.emplace<CombatStats>(enemy, static_cast<int>(def.attack * scaleMultiplier), static_cast<int>(def.defense * scaleMultiplier));
+                    spatialGrid[ey * mapWidth + ex] = enemy;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!items.empty())
+    {
+        for (int i = 0; i < 20; ++i)
+        {
+            while (true)
+            {
+                int ix = rand() % mapWidth;
+                int iy = rand() % mapHeight;
+                if (gameMap.isFloor(ix, iy) && spatialGrid[iy * mapWidth + ix] == entt::null)
+                {
+                    const auto &def = items[rand() % items.size()];
+                    auto item = registry.create();
+                    registry.emplace<Position>(item, ix, iy);
+                    registry.emplace<Item>(item, def.type, def.healAmount);
+                    break; // Items don't go in grid
+                }
+            }
+        }
+    }
+
+    // Spawn Stairs
+    while (true)
+    {
+        int sx = rand() % mapWidth;
+        int sy = rand() % mapHeight;
+        if (gameMap.isFloor(sx, sy) && spatialGrid[sy * mapWidth + sx] == entt::null)
+        {
+            int dist = std::abs(sx - startX) + std::abs(sy - startY);
+            if (dist >= 30)
+            {
+                auto stairs = registry.create();
+                registry.emplace<Position>(stairs, sx, sy);
+                registry.emplace<Stairs>(stairs);
+                break;
+            }
+        }
+    }
 }
