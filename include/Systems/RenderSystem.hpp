@@ -9,5 +9,5 @@ class RenderSystem
 public:
     void update(SDL_Renderer *renderer, const entt::registry &registry, const Map &gameMap,
                 int cameraX, int cameraY, int windowWidth, int windowHeight,
-                UIRenderer &uiRenderer, entt::entity playerEntity);
+                UIRenderer &uiRenderer, entt::entity playerEntity, int floorDepth);
 };

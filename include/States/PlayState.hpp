@@ -31,6 +31,10 @@ public:
 private:
     Game &game;
 
+    int floorDepth = 1;
+    std::vector<EnemyDef> loadedEnemies;
+    std::vector<ItemDef> loadedItems;
+
     Map gameMap;
     bool lastSpellSucceeded = false;
     entt::registry registry;
@@ -54,4 +58,5 @@ private:
 
     entt::entity getBlockingEntityAt(int x, int y);
     void updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY);
+    void onDescend(const DescendEvent &event);
 };

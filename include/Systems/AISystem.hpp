@@ -9,7 +9,8 @@ class AISystem
 {
 public:
     AISystem(entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, Map &mapRef, std::vector<entt::entity> &grid, int w, int h);
-    void update(entt::entity playerEntity);
+
+    void update(entt::entity playerEntity, int floorDepth);
 
 private:
     entt::registry &registry;

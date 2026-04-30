@@ -12,13 +12,11 @@ entt::entity AISystem::getBlockingEntityAt(int x, int y)
 {
     if (x < 0 || y < 0 || x >= mapWidth || y >= mapHeight)
         return entt::null;
-
     return spatialGrid[y * mapWidth + x];
 }
 
 void AISystem::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
 {
-
     if (oldX >= 0 && oldY >= 0 && oldX < mapWidth && oldY < mapHeight)
     {
         int oldIndex = oldY * mapWidth + oldX;
@@ -34,7 +32,7 @@ void AISystem::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int ne
     }
 }
 
-void AISystem::update(entt::entity playerEntity)
+void AISystem::update(entt::entity playerEntity, int floorDepth)
 {
     if (!registry.valid(playerEntity) || !registry.all_of<Position>(playerEntity))
         return;
@@ -49,7 +47,7 @@ void AISystem::update(entt::entity playerEntity)
     int aggroRadius = 15;
     try
     {
-        aggroRadius = lua["GetAggroRadius"](currentEntropy);
+        aggroRadius = lua["GetAggroRadius"](currentEntropy, floorDepth);
     }
     catch (const sol::error &e)
     {

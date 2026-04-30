@@ -5,7 +5,6 @@
 CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, std::vector<entt::entity> &grid, int w, int h)
     : game(gameRef), registry(reg), dispatcher(disp), lua(luaState), spatialGrid(grid), mapWidth(w), mapHeight(h)
 {
-    // Subscribe to events
     dispatcher.sink<MeleeAttackEvent>().connect<&CombatSystem::onMeleeAttack>(this);
     dispatcher.sink<EntityDeathEvent>().connect<&CombatSystem::onEntityDeath>(this);
     dispatcher.sink<DamageEvent>().connect<&CombatSystem::onDamage>(this);
@@ -15,7 +14,6 @@ CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher 
 void CombatSystem::update()
 {
     auto view = registry.view<PendingDestroy>();
-
     std::vector<entt::entity> toDestroy(view.begin(), view.end());
 
     for (auto deadEntity : toDestroy)
@@ -27,7 +25,7 @@ void CombatSystem::update()
 
             if (index >= 0 && index < (mapWidth * mapHeight) && spatialGrid[index] == deadEntity)
             {
-                spatialGrid[index] = entt::null; // Clear collision authority
+                spatialGrid[index] = entt::null;
             }
         }
         registry.destroy(deadEntity);
@@ -36,7 +34,7 @@ void CombatSystem::update()
 
 void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event)
 {
-    if (!registry.valid(event.attacker) || !registry.valid(event.target))
+    if (!registry.valid(event.attacker) || !registry.valid(event.target) || registry.all_of<PendingDestroy>(event.target))
         return;
 
     auto &aStats = registry.get<CombatStats>(event.attacker);
@@ -88,8 +86,9 @@ void CombatSystem::onEntityDeath(const EntityDeathEvent &event)
 
 void CombatSystem::onDamage(const DamageEvent &event)
 {
-    if (!registry.valid(event.target) || !registry.all_of<Health>(event.target))
+    if (!registry.valid(event.target) || !registry.all_of<Health>(event.target) || registry.all_of<PendingDestroy>(event.target))
         return;
+
     auto &hp = registry.get<Health>(event.target);
     hp.current -= event.damage;
     std::cout << "Entity " << static_cast<uint32_t>(event.target) << " took " << event.damage << " flat DMG! (HP: " << hp.current << ")\n";

@@ -1,11 +1,11 @@
-function GetAggroRadius(entropy_level)
-    local base_radius = 15
+function GetAggroRadius(entropy_level, floor_depth)
+    local base_radius = 15 + (floor_depth - 1) * 2
 
     if entropy_level >= 86 then
-        return 30
+        return base_radius + 15
     elseif entropy_level >= 61 then
-        return 22
+        return base_radius + 7
     end
 
-    return base_radius
+    return math.floor(base_radius)
 end

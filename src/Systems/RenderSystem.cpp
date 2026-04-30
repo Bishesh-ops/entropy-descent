@@ -3,7 +3,7 @@
 
 void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry, const Map &gameMap,
                           int cameraX, int cameraY, int windowWidth, int windowHeight,
-                          UIRenderer &uiRenderer, entt::entity playerEntity)
+                          UIRenderer &uiRenderer, entt::entity playerEntity, int floorDepth)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -34,7 +34,7 @@ void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry
                 SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
             }
         }
-        else if (registry.all_of<Item>(entity))
+        else if (registry.all_of<Item>(entity) || registry.all_of<Stairs>(entity))
         {
             if (registry.all_of<RenderColor>(entity))
             {
@@ -58,6 +58,6 @@ void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry
         SDL_RenderFillRect(renderer, &rect);
     }
 
-    uiRenderer.render(renderer, registry, playerEntity);
+    uiRenderer.render(renderer, registry, playerEntity, windowWidth, windowHeight, floorDepth);
     SDL_RenderPresent(renderer);
 }

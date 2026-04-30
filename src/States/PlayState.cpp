@@ -24,7 +24,6 @@ PlayState::PlayState(Game &gameRef)
       needsFOVUpdate(true),
       spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
-    // Initialize Lua
     lua.open_libraries(sol::lib::base, sol::lib::math);
     try
     {
@@ -36,20 +35,20 @@ PlayState::PlayState(Game &gameRef)
         std::cerr << "Lua Error: " << e.what() << "\n";
     }
 
-    // Load JSON Data
-    auto loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
-    auto loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
+    loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
+    loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     auto loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
 
-    // Initialize Systems
     combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, lua, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
     spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
     aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
 
-    // 4. Generate World
+    dispatcher.sink<DescendEvent>().connect<&PlayState::onDescend>(this);
+
     playerEntity = WorldBuilder::generateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems);
 }
+
 void PlayState::processInput()
 {
     SDL_Event event;
@@ -105,6 +104,27 @@ void PlayState::processInput()
                 dispatcher.trigger(ItemPickupEvent{playerEntity, &success});
                 playerActed = success;
             }
+            if (event.key.key == SDLK_PERIOD)
+            {
+                auto &playerPos = registry.get<Position>(playerEntity);
+                auto stairsView = registry.view<Position, Stairs>();
+
+                bool onStairs = false;
+                for (auto [entity, pos] : stairsView.each())
+                {
+                    if (pos.x == playerPos.x && pos.y == playerPos.y)
+                    {
+                        onStairs = true;
+                        break;
+                    }
+                }
+
+                if (onStairs)
+                {
+                    dispatcher.trigger(DescendEvent{});
+                    playerActed = true;
+                }
+            }
 
             if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
                 nextY--;
@@ -153,9 +173,8 @@ void PlayState::update()
 
     if (currentTurnState == TurnState::ENEMY_TURN)
     {
-        aiSystem->update(playerEntity);
+        aiSystem->update(playerEntity, floorDepth);
 
-        // --- Entropy Decay ---
         if (registry.all_of<EntropyStats>(playerEntity))
         {
             auto &eStats = registry.get<EntropyStats>(playerEntity);
@@ -216,11 +235,9 @@ void PlayState::update()
             }
         }
 
-        // Handoff back to player
         currentTurnState = TurnState::WAITING_FOR_PLAYER;
     }
 
-    // FOV & Camera follow outside the turn gate so it stays smooth
     if (needsFOVUpdate)
     {
         int dynamicFOV = registry.get<EntropyStats>(playerEntity).fovRadius;
@@ -237,7 +254,7 @@ void PlayState::update()
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,
-                        game.getWindowWidth(), game.getWindowHeight(), uiRenderer, playerEntity);
+                        game.getWindowWidth(), game.getWindowHeight(), uiRenderer, playerEntity, floorDepth);
 }
 
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
@@ -252,6 +269,34 @@ void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int n
     {
         spatialGrid[newY * MAP_WIDTH + newX] = entity;
     }
+}
+
+void PlayState::onDescend(const DescendEvent &event)
+{
+    std::vector<entt::entity> toDestroy;
+    auto view = registry.view<entt::entity>();
+    for (auto entity : view)
+    {
+        if (entity == playerEntity)
+            continue;
+
+        if (!registry.all_of<Position>(entity) && registry.all_of<Item>(entity))
+        {
+            continue;
+        }
+        toDestroy.push_back(entity);
+    }
+
+    for (auto entity : toDestroy)
+    {
+        registry.destroy(entity);
+    }
+
+    floorDepth++;
+
+    WorldBuilder::repopulateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT,
+                                  loadedEnemies, loadedItems, playerEntity, floorDepth);
+    needsFOVUpdate = true;
 }
 
 entt::entity PlayState::getBlockingEntityAt(int x, int y)

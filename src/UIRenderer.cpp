@@ -2,7 +2,7 @@
 #include "../include/Components.hpp"
 #include <algorithm>
 
-void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, entt::entity playerEntity)
+void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, entt::entity playerEntity, int windowWidth, int windowHeight, int floorDepth)
 {
     if (!registry.valid(playerEntity) || !registry.all_of<Health>(playerEntity))
         return;
@@ -42,7 +42,7 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
         {
             SDL_FRect slotRect = {barX + i * (slotSize + padding), slotY, slotSize, slotSize};
 
-            if (i < inv.items.size())
+            if (i < static_cast<int>(inv.items.size()))
             {
                 entt::entity itemEntity = inv.items[i];
                 if (registry.all_of<RenderColor>(itemEntity))
@@ -52,7 +52,7 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
                 }
                 else
                 {
-                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Fallback
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                 }
                 SDL_RenderFillRect(renderer, &slotRect);
             }
@@ -72,12 +72,10 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
         float entropyY = barY + barHeight + 10.0f + 15.0f + 10.0f;
         float entropyPercent = std::clamp(es.entropy / 100.0f, 0.0f, 1.0f);
 
-        // Background
         SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
         SDL_FRect eBg = {barX, entropyY, barWidth, 10.0f};
         SDL_RenderFillRect(renderer, &eBg);
 
-        // Fill — green to red based on entropy
         if (entropyPercent > 0.0f)
         {
             uint8_t r = static_cast<uint8_t>(255 * entropyPercent);
@@ -87,8 +85,25 @@ void UIRenderer::render(SDL_Renderer *renderer, const entt::registry &registry, 
             SDL_RenderFillRect(renderer, &eFill);
         }
 
-        // Border
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderRect(renderer, &eBg);
+    }
+
+    // --- 4. Floor Depth Indicator ---
+    int maxSquares = 10;
+    int displayFloors = std::min(floorDepth, maxSquares);
+    float startX = static_cast<float>(windowWidth - 120);
+    float startY = 20.0f;
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+    for (int i = 0; i < displayFloors; ++i)
+    {
+        SDL_FRect square = {
+            startX + (i * 10.0f),
+            startY,
+            8.0f,
+            8.0f};
+        SDL_RenderFillRect(renderer, &square);
     }
 }

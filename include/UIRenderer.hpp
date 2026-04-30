@@ -5,5 +5,5 @@
 class UIRenderer
 {
 public:
-    void render(SDL_Renderer *renderer, const entt::registry &registry, entt::entity playerEntity);
+    void render(SDL_Renderer *renderer, const entt::registry &registry, entt::entity playerEntity, int windowWidth, int windowHeight, int floorDepth);
 };

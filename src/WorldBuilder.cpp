@@ -2,6 +2,7 @@
 #include "../include/Components.hpp"
 #include <iostream>
 #include <random>
+#include <algorithm>
 
 entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap, std::vector<entt::entity> &spatialGrid,
                                          int mapWidth, int mapHeight,
@@ -17,9 +18,8 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
     std::uniform_int_distribution<int> distY(2, mapHeight - 3);
     std::uniform_int_distribution<int> chance(0, 99);
 
-    // Entropic Pools (Water & Fire)
     for (int i = 0; i < 40; ++i)
-    { // 40 Water
+    {
         int cx = distX(rng), cy = distY(rng);
         while (!gameMap.isFloor(cx, cy))
         {
@@ -36,7 +36,7 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
         }
     }
     for (int i = 0; i < 15; ++i)
-    { // 15 Fire
+    {
         int cx = distX(rng), cy = distY(rng);
         while (!gameMap.isFloor(cx, cy))
         {
@@ -53,7 +53,6 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
         }
     }
 
-    // Player Init
     auto playerEntity = registry.create();
     registry.emplace<Player>(playerEntity);
     registry.emplace<Collider>(playerEntity);
@@ -75,7 +74,6 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
     registry.emplace<Position>(playerEntity, startX, startY);
     spatialGrid[startY * mapWidth + startX] = playerEntity;
 
-    // Enemy Init
     if (!enemies.empty())
     {
         std::uniform_int_distribution<int> distArch(0, enemies.size() - 1);
@@ -99,7 +97,6 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
         }
     }
 
-    // Item Init
     if (!items.empty())
     {
         std::uniform_int_distribution<int> distItem(0, items.size() - 1);
@@ -134,7 +131,7 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
                 auto stairs = registry.create();
                 registry.emplace<Position>(stairs, sx, sy);
                 registry.emplace<Stairs>(stairs);
-                // Stairs don't go in the spatial grid!
+                registry.emplace<RenderColor>(stairs, static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(0), static_cast<uint8_t>(255));
                 break;
             }
         }
@@ -143,14 +140,55 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
     return playerEntity;
 }
 
-void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::vector<entt::entity> &spatialGrid, int mapWidth, int mapHeight, const std::vector<EnemyDef> &enemies, const std::vector<ItemDef> &items, entt::entity existingPlayer, int floorDepth)
+void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::vector<entt::entity> &spatialGrid,
+                                   int mapWidth, int mapHeight, const std::vector<EnemyDef> &enemies,
+                                   const std::vector<ItemDef> &items, entt::entity existingPlayer, int floorDepth)
 {
     std::fill(spatialGrid.begin(), spatialGrid.end(), static_cast<entt::entity>(entt::null));
 
     gameMap.generateCaves(45, 5);
     gameMap.processMap();
 
-    // Place existing player
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> distX(2, mapWidth - 3);
+    std::uniform_int_distribution<int> distY(2, mapHeight - 3);
+    std::uniform_int_distribution<int> chance(0, 99);
+
+    for (int i = 0; i < 40; ++i)
+    {
+        int cx = distX(rng), cy = distY(rng);
+        while (!gameMap.isFloor(cx, cy))
+        {
+            cx = distX(rng);
+            cy = distY(rng);
+        }
+        for (int dy = -2; dy <= 2; ++dy)
+        {
+            for (int dx = -2; dx <= 2; ++dx)
+            {
+                if (gameMap.isFloor(cx + dx, cy + dy) && chance(rng) < (100 - ((std::abs(dx) + std::abs(dy)) * 25)))
+                    gameMap.setTileState(cx + dx, cy + dy, TileState::WATER);
+            }
+        }
+    }
+    for (int i = 0; i < 15; ++i)
+    {
+        int cx = distX(rng), cy = distY(rng);
+        while (!gameMap.isFloor(cx, cy))
+        {
+            cx = distX(rng);
+            cy = distY(rng);
+        }
+        for (int dy = -1; dy <= 1; ++dy)
+        {
+            for (int dx = -1; dx <= 1; ++dx)
+            {
+                if (gameMap.isFloor(cx + dx, cy + dy) && chance(rng) < 60)
+                    gameMap.setTileState(cx + dx, cy + dy, TileState::FIRE);
+            }
+        }
+    }
+
     int startX, startY;
     while (true)
     {
@@ -164,7 +202,6 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
         }
     }
 
-    // Spawn 60 Scaled Enemies
     if (!enemies.empty())
     {
         float scaleMultiplier = 1.0f + ((floorDepth - 1) * 0.15f);
@@ -178,11 +215,17 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                 {
                     const auto &def = enemies[rand() % enemies.size()];
                     auto enemy = registry.create();
+
                     registry.emplace<Position>(enemy, ex, ey);
                     registry.emplace<RenderColor>(enemy, def.r, def.g, def.b, static_cast<uint8_t>(255));
                     registry.emplace<Enemy>(enemy);
-                    registry.emplace<Health>(enemy, static_cast<int>(def.hp * scaleMultiplier));
-                    registry.emplace<CombatStats>(enemy, static_cast<int>(def.attack * scaleMultiplier), static_cast<int>(def.defense * scaleMultiplier));
+                    registry.emplace<Collider>(enemy);
+
+                    registry.emplace<Health>(enemy, std::max(1, static_cast<int>(def.hp * scaleMultiplier)));
+                    registry.emplace<CombatStats>(enemy,
+                                                  std::max(1, static_cast<int>(def.attack * scaleMultiplier)),
+                                                  std::max(1, static_cast<int>(def.defense * scaleMultiplier)));
+
                     spatialGrid[ey * mapWidth + ex] = enemy;
                     break;
                 }
@@ -203,14 +246,15 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                     const auto &def = items[rand() % items.size()];
                     auto item = registry.create();
                     registry.emplace<Position>(item, ix, iy);
-                    registry.emplace<Item>(item, def.type, def.healAmount);
-                    break; // Items don't go in grid
+                    registry.emplace<RenderColor>(item, def.r, def.g, def.b, static_cast<uint8_t>(255));
+                    registry.emplace<Item>(item);
+                    registry.emplace<ItemEffect>(item, def.effectType, def.magnitude);
+                    break;
                 }
             }
         }
     }
 
-    // Spawn Stairs
     while (true)
     {
         int sx = rand() % mapWidth;
@@ -223,6 +267,7 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                 auto stairs = registry.create();
                 registry.emplace<Position>(stairs, sx, sy);
                 registry.emplace<Stairs>(stairs);
+                registry.emplace<RenderColor>(stairs, static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(0), static_cast<uint8_t>(255));
                 break;
             }
         }
