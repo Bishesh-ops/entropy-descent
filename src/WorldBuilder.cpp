@@ -74,6 +74,7 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
     registry.emplace<Position>(playerEntity, startX, startY);
     registry.emplace<Transform>(playerEntity, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
     registry.emplace<Velocity>(playerEntity, 0.0f, 0.0f, 150.0f);
+    registry.emplace<Hitbox>(playerEntity);
     spatialGrid[startY * mapWidth + startX] = playerEntity;
 
     if (!enemies.empty())
@@ -92,6 +93,7 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
             registry.emplace<Position>(enemy, ex, ey);
             registry.emplace<Transform>(enemy, static_cast<float>(ex * 20), static_cast<float>(ey * 20));
             registry.emplace<Velocity>(enemy, 0.0f, 0.0f, 75.0f);
+            registry.emplace<Hitbox>(enemy);
 
             registry.emplace<Enemy>(enemy);
             registry.emplace<Collider>(enemy);
@@ -203,6 +205,7 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
         {
             registry.replace<Transform>(existingPlayer, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
             registry.replace<Velocity>(existingPlayer, 0.0f, 0.0f, 150.0f);
+            registry.emplace<Hitbox>(existingPlayer);
             spatialGrid[startY * mapWidth + startX] = existingPlayer;
             break;
         }
@@ -228,6 +231,7 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                     registry.emplace<RenderColor>(enemy, def.r, def.g, def.b, static_cast<uint8_t>(255));
                     registry.emplace<Enemy>(enemy);
                     registry.emplace<Collider>(enemy);
+                    registry.emplace<Hitbox>(enemy);
 
                     registry.emplace<Health>(enemy, std::max(1, static_cast<int>(def.hp * scaleMultiplier)));
                     registry.emplace<CombatStats>(enemy,

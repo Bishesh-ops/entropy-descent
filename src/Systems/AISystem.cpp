@@ -34,10 +34,15 @@ void AISystem::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int ne
 
 void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
 {
-    if (!registry.valid(playerEntity) || !registry.all_of<Position>(playerEntity))
+    if (!registry.valid(playerEntity) || !registry.all_of<Transform>(playerEntity) || !registry.all_of<Hitbox>(playerEntity))
         return;
+
     auto &playerTransform = registry.get<Transform>(playerEntity);
     auto &playerPos = registry.get<Position>(playerEntity);
+    auto &pHitbox = registry.get<Hitbox>(playerEntity);
+
+    float pX = playerTransform.x + pHitbox.offsetX;
+    float pY = playerTransform.y + pHitbox.offsetY;
 
     int currentEntropy = 0;
     if (registry.all_of<EntropyStats>(playerEntity))
@@ -55,7 +60,8 @@ void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
         std::cerr << "Lua AI Error: " << e.what() << "\n";
     }
 
-    auto view = registry.view<Enemy, Transform, Velocity, Position>();
+    auto view = registry.view<Enemy, Transform, Velocity, Position, Hitbox>();
+
     for (auto entity : view)
     {
         if (registry.all_of<Phantom>(entity))
@@ -65,27 +71,35 @@ void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
         auto &enemyTransform = view.get<Transform>(entity);
         auto &enemyVel = view.get<Velocity>(entity);
         auto &enemyPos = view.get<Position>(entity);
+        auto &enemyHitbox = view.get<Hitbox>(entity);
 
-        // Tick down the attack cooldown
         if (enemy.attackCooldown > 0.0f)
         {
             enemy.attackCooldown -= dt;
         }
 
-        // Calculate real pixel distance to player
-        float dx = playerTransform.x - enemyTransform.x;
-        float dy = playerTransform.y - enemyTransform.y;
+        float eX = enemyTransform.x + enemyHitbox.offsetX;
+        float eY = enemyTransform.y + enemyHitbox.offsetY;
+
+        float reach = 2.0f;
+        bool inCombatRange = (eX - reach < pX + pHitbox.width &&
+                              eX + enemyHitbox.width + reach > pX &&
+                              eY - reach < pY + pHitbox.height &&
+                              eY + enemyHitbox.height + reach > pY);
+
+        float dx = (playerTransform.x + 10.0f) - (enemyTransform.x + 10.0f);
+        float dy = (playerTransform.y + 10.0f) - (enemyTransform.y + 10.0f);
         float pixelDistToPlayer = std::sqrt(dx * dx + dy * dy);
 
-        if (pixelDistToPlayer <= 25.0f)
+        if (inCombatRange)
         {
-            enemyVel.dx = 0.0f; // Stop moving to attack
+            enemyVel.dx = 0.0f;
             enemyVel.dy = 0.0f;
 
             if (enemy.attackCooldown <= 0.0f)
             {
                 dispatcher.trigger(MeleeAttackEvent{entity, playerEntity});
-                enemy.attackCooldown = 1.0f; // Attack once per second
+                enemy.attackCooldown = 1.0f;
             }
         }
         else if (pixelDistToPlayer <= (aggroRadius * 20.0f))
@@ -110,6 +124,7 @@ void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
             }
             else
             {
+
                 enemyVel.dx = 0.0f;
                 enemyVel.dy = 0.0f;
             }
@@ -125,8 +140,9 @@ void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
             auto &pStats = registry.get<EntropyStats>(playerEntity);
             if (pStats.hasPassiveAura && gameMap.isVisible(enemyPos.x, enemyPos.y))
             {
-                dispatcher.trigger(DamageEvent{entity, 5});
-                std::cout << "Enemy scorched by your Entropic Aura for 5 DMG!\n";
+                // TODO in Phase 4: Throttle this with a timer so it damages over time (DPS)
+                // instead of triggering every frame!
+                // dispatcher.trigger(DamageEvent{entity, 5});
             }
         }
     }
