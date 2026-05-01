@@ -6,6 +6,7 @@
 #include "../../include/States/VowState.hpp"
 #include <iostream>
 #include <random>
+#include <string>
 
 constexpr int MAP_WIDTH = 200;
 constexpr int MAP_HEIGHT = 150;
@@ -60,6 +61,38 @@ PlayState::PlayState(Game &gameRef)
             float speed = speedDist(rng);
             float life = lifeDist(rng);
             registry.emplace<Particle>(p, life, life, std::cos(angle)*speed, std::sin(angle)*speed, static_cast<uint8_t>(r), static_cast<uint8_t>(g), static_cast<uint8_t>(b));
+        } });
+
+    lua.set_function("ConsumeTiles", [&](float pixelX, float pixelY, int gridRadius, const std::string &tileType)
+                     {
+        int cx = static_cast<int>(pixelX) / 20;
+        int cy = static_cast<int>(pixelY) / 20;
+        
+        TileState target = TileState::FLOOR;
+        if (tileType == "FIRE") target = TileState::FIRE;
+        if (tileType == "WATER") target = TileState::WATER;
+
+        int consumed = 0;
+        for (int y = cy - gridRadius; y <= cy + gridRadius; ++y) {
+            for (int x = cx - gridRadius; x <= cx + gridRadius; ++x) {
+                // Ensure we don't check out of bounds
+                if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+                    if (gameMap.getTileState(x, y) == target) {
+                        consumed++;
+                        gameMap.setTileState(x, y, TileState::FLOOR); 
+                    }
+                }
+            }
+        }
+        return consumed; });
+
+    lua.set_function("ApplyDrawback", [&](int entropyCost, int healthCost)
+                     {
+        if (entropyCost > 0 && registry.all_of<EntropyStats>(playerEntity)) {
+            registry.get<EntropyStats>(playerEntity).entropy += entropyCost;
+        }
+        if (healthCost > 0) {
+            dispatcher.trigger(DamageEvent{playerEntity, healthCost});
         } });
 
     loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);

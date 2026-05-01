@@ -48,6 +48,6 @@ void SpellSystem::onSpellCast(const SpellCastEvent &event)
 
     if (event.type != SpellCastEvent::SpellType::MELEE && registry.all_of<EntropyStats>(event.caster))
     {
-        registry.get<EntropyStats>(event.caster).entropy += 15;
+        // registry.get<EntropyStats>(event.caster).entropy += 15;
     }
 }
