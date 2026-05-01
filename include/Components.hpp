@@ -23,6 +23,14 @@ struct Velocity
 struct Player
 {
 };
+
+struct Hitbox
+{
+    float width = 16.0f;
+    float height = 16.0f;
+    float offsetX = 2.0f;
+    float offsetY = 2.0f;
+};
 struct Enemy
 {
     float attackCooldown = 0.0f;
