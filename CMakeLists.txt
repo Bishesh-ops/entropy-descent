@@ -55,6 +55,7 @@ add_executable(Roguelike
     src/Systems/SpellSystem.cpp
     src/Systems/ItemSystem.cpp
     src/Systems/AISystem.cpp
+    src/Systems/MovementSystem.cpp
 )
 target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR})
 

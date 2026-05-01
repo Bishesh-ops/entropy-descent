@@ -51,9 +51,19 @@ void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry
             SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
         }
 
+        float renderX = static_cast<float>(pos.x * 20);
+        float renderY = static_cast<float>(pos.y * 20);
+
+        if (registry.all_of<Transform>(entity))
+        {
+            auto &t = registry.get<Transform>(entity);
+            renderX = t.x;
+            renderY = t.y;
+        }
+
         SDL_FRect rect = {
-            static_cast<float>((pos.x * 20) - cameraX),
-            static_cast<float>((pos.y * 20) - cameraY),
+            renderX - static_cast<float>(cameraX),
+            renderY - static_cast<float>(cameraY),
             20.0f, 20.0f};
         SDL_RenderFillRect(renderer, &rect);
     }

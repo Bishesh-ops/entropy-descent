@@ -34,18 +34,15 @@ PlayState::PlayState(Game &gameRef)
     {
         std::cerr << "Lua Error: " << e.what() << "\n";
     }
-
     loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
     loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     auto loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
-
     combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, lua, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
     spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
     aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
-
     dispatcher.sink<DescendEvent>().connect<&PlayState::onDescend>(this);
-
+    movementSystem = std::make_unique<MovementSystem>(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     playerEntity = WorldBuilder::generateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems);
 }
 
@@ -101,88 +98,28 @@ void PlayState::processInput()
 }
 void PlayState::update(float dt)
 {
+    movementSystem->update(dt);
+
     auto &pos = registry.get<Position>(playerEntity);
 
-    if (currentTurnState == TurnState::ENEMY_TURN)
+    if (registry.all_of<Transform>(playerEntity))
     {
-        aiSystem->update(playerEntity, floorDepth);
-
-        if (registry.all_of<EntropyStats>(playerEntity))
-        {
-            auto &eStats = registry.get<EntropyStats>(playerEntity);
-            if (eStats.entropy > 0)
-                eStats.entropy--;
-        }
-
-        auto &eStats = registry.get<EntropyStats>(playerEntity);
-
-        if (eStats.entropy >= 100)
-        {
-            game.getStateMachine().pushState(std::make_unique<VowState>(game, registry, playerEntity));
-        }
-        else if (eStats.entropy >= 86)
-        {
-            std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> distX(0, MAP_WIDTH - 1);
-            std::uniform_int_distribution<int> distY(0, MAP_HEIGHT - 1);
-            int cx = distX(rng), cy = distY(rng);
-
-            if (gameMap.isFloor(cx, cy) && gameMap.getTileState(cx, cy) == TileState::EMPTY)
-            {
-                gameMap.setTileState(cx, cy, TileState::FIRE);
-                std::cout << "Reality degrades... a tile combusts into FIRE.\n";
-            }
-        }
-        else if (eStats.entropy >= 61)
-        {
-            int phantomCount = 0;
-            for (auto e : registry.view<Phantom>())
-                phantomCount++;
-
-            if (phantomCount < 2)
-            {
-                std::vector<int> visibleFloor;
-                for (int y = 0; y < MAP_HEIGHT; ++y)
-                {
-                    for (int x = 0; x < MAP_WIDTH; ++x)
-                    {
-                        if (gameMap.isFloor(x, y) && gameMap.isVisible(x, y) && spatialGrid[y * MAP_WIDTH + x] == entt::null)
-                        {
-                            visibleFloor.push_back(y * MAP_WIDTH + x);
-                        }
-                    }
-                }
-                if (!visibleFloor.empty())
-                {
-                    std::mt19937 rng(std::random_device{}());
-                    std::uniform_int_distribution<int> dist(0, visibleFloor.size() - 1);
-                    int targetIndex = visibleFloor[dist(rng)];
-
-                    auto phantom = registry.create();
-                    registry.emplace<Position>(phantom, targetIndex % MAP_WIDTH, targetIndex / MAP_WIDTH);
-                    registry.emplace<Enemy>(phantom);
-                    registry.emplace<Phantom>(phantom);
-                    registry.emplace<RenderColor>(phantom, static_cast<uint8_t>(180), static_cast<uint8_t>(0), static_cast<uint8_t>(180), static_cast<uint8_t>(180));
-                }
-            }
-        }
-
-        currentTurnState = TurnState::WAITING_FOR_PLAYER;
+        auto &pTransform = registry.get<Transform>(playerEntity);
+        cameraX = std::clamp(static_cast<int>(pTransform.x) - (game.getWindowWidth() / 2), 0, (MAP_WIDTH * 20) - game.getWindowWidth());
+        cameraY = std::clamp(static_cast<int>(pTransform.y) - (game.getWindowHeight() / 2), 0, (MAP_HEIGHT * 20) - game.getWindowHeight());
     }
 
-    if (needsFOVUpdate)
+    static int lastFovX = -1, lastFovY = -1;
+    if (pos.x != lastFovX || pos.y != lastFovY || needsFOVUpdate)
     {
         int dynamicFOV = registry.get<EntropyStats>(playerEntity).fovRadius;
         gameMap.calculateFOV(pos.x, pos.y, dynamicFOV);
-
-        cameraX = std::clamp(pos.x * 20 - (game.getWindowWidth() / 2), 0, (MAP_WIDTH * 20) - game.getWindowWidth());
-        cameraY = std::clamp(pos.y * 20 - (game.getWindowHeight() / 2), 0, (MAP_HEIGHT * 20) - game.getWindowHeight());
+        lastFovX = pos.x;
+        lastFovY = pos.y;
         needsFOVUpdate = false;
     }
-
     combatSystem->update();
 }
-
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,

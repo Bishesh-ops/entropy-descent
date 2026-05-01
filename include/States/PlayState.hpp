@@ -12,6 +12,7 @@
 #include "../Systems/ItemSystem.hpp"
 #include "../Systems/SpellSystem.hpp"
 #include "../Systems/AISystem.hpp"
+#include "../Systems/MovementSystem.hpp"
 #include <memory>
 
 enum class TurnState
@@ -34,6 +35,7 @@ private:
     int floorDepth = 1;
     std::vector<EnemyDef> loadedEnemies;
     std::vector<ItemDef> loadedItems;
+    std::unique_ptr<MovementSystem> movementSystem;
 
     Map gameMap;
     bool lastSpellSucceeded = false;
