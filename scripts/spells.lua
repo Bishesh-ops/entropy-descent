@@ -14,7 +14,6 @@ function Spells.Cast(spell_type, startX, startY, targetX, targetY, entropy_bonus
     local dx, dy = GetDirection(startX, startY, targetX, targetY)
 
     if spell_type == "MELEE" then
-        -- Melee is just a fast, invisible, short-lived projectile!
         SpawnProjectile(startX + (dx * 15), startY + (dy * 15), dx, dy, 50.0, base_attack, 0.1, "PHYSICAL", 255, 255, 255)
         SpawnParticles(startX + (dx * 20), startY + (dy * 20), 5, 200, 200, 200)
     elseif spell_type == "FIRE" then
