@@ -25,6 +25,7 @@ struct Player
 };
 struct Enemy
 {
+    float attackCooldown = 0.0f;
 };
 struct Collider
 {

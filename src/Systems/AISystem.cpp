@@ -32,10 +32,11 @@ void AISystem::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int ne
     }
 }
 
-void AISystem::update(entt::entity playerEntity, int floorDepth)
+void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
 {
     if (!registry.valid(playerEntity) || !registry.all_of<Position>(playerEntity))
         return;
+    auto &playerTransform = registry.get<Transform>(playerEntity);
     auto &playerPos = registry.get<Position>(playerEntity);
 
     int currentEntropy = 0;
@@ -54,35 +55,69 @@ void AISystem::update(entt::entity playerEntity, int floorDepth)
         std::cerr << "Lua AI Error: " << e.what() << "\n";
     }
 
-    auto view = registry.view<Position, Enemy>();
+    auto view = registry.view<Enemy, Transform, Velocity, Position>();
     for (auto entity : view)
     {
         if (registry.all_of<Phantom>(entity))
             continue;
 
+        auto &enemy = view.get<Enemy>(entity);
+        auto &enemyTransform = view.get<Transform>(entity);
+        auto &enemyVel = view.get<Velocity>(entity);
         auto &enemyPos = view.get<Position>(entity);
-        int distToPlayer = std::abs(enemyPos.x - playerPos.x) + std::abs(enemyPos.y - playerPos.y);
 
-        if (distToPlayer == 1)
+        // Tick down the attack cooldown
+        if (enemy.attackCooldown > 0.0f)
         {
-            dispatcher.trigger(MeleeAttackEvent{entity, playerEntity});
+            enemy.attackCooldown -= dt;
         }
-        else if (distToPlayer <= aggroRadius)
+
+        // Calculate real pixel distance to player
+        float dx = playerTransform.x - enemyTransform.x;
+        float dy = playerTransform.y - enemyTransform.y;
+        float pixelDistToPlayer = std::sqrt(dx * dx + dy * dy);
+
+        if (pixelDistToPlayer <= 25.0f)
+        {
+            enemyVel.dx = 0.0f; // Stop moving to attack
+            enemyVel.dy = 0.0f;
+
+            if (enemy.attackCooldown <= 0.0f)
+            {
+                dispatcher.trigger(MeleeAttackEvent{entity, playerEntity});
+                enemy.attackCooldown = 1.0f; // Attack once per second
+            }
+        }
+        else if (pixelDistToPlayer <= (aggroRadius * 20.0f))
         {
             auto path = gameMap.findPath(enemyPos.x, enemyPos.y, playerPos.x, playerPos.y);
+
             if (!path.empty())
             {
                 int nextIndex = path[0];
-                int nextX = nextIndex % mapWidth;
-                int nextY = nextIndex / mapWidth;
+                float targetX = static_cast<float>((nextIndex % mapWidth) * 20);
+                float targetY = static_cast<float>((nextIndex / mapWidth) * 20);
 
-                if (getBlockingEntityAt(nextX, nextY) == entt::null && !(nextX == playerPos.x && nextY == playerPos.y))
+                float dirX = targetX - enemyTransform.x;
+                float dirY = targetY - enemyTransform.y;
+                float distToNode = std::sqrt(dirX * dirX + dirY * dirY);
+
+                if (distToNode > 2.0f)
                 {
-                    updateSpatialGrid(entity, enemyPos.x, enemyPos.y, nextX, nextY);
-                    enemyPos.x = nextX;
-                    enemyPos.y = nextY;
+                    enemyVel.dx = dirX / distToNode;
+                    enemyVel.dy = dirY / distToNode;
                 }
             }
+            else
+            {
+                enemyVel.dx = 0.0f;
+                enemyVel.dy = 0.0f;
+            }
+        }
+        else
+        {
+            enemyVel.dx = 0.0f;
+            enemyVel.dy = 0.0f;
         }
 
         if (registry.all_of<EntropyStats>(playerEntity))

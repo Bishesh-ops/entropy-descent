@@ -118,6 +118,26 @@ void PlayState::update(float dt)
         lastFovY = pos.y;
         needsFOVUpdate = false;
     }
+    aiSystem->update(playerEntity, floorDepth, dt);
+    static float entropyTimer = 0.0f;
+    entropyTimer += dt;
+    if (entropyTimer >= 1.0f)
+    {
+        if (registry.all_of<EntropyStats>(playerEntity))
+        {
+            auto &eStats = registry.get<EntropyStats>(playerEntity);
+            if (eStats.entropy > 0)
+                eStats.entropy--;
+        }
+        entropyTimer = 0.0f;
+    }
+
+    // Check Vow Thresholds
+    auto &eStats = registry.get<EntropyStats>(playerEntity);
+    if (eStats.entropy >= 100)
+    {
+        game.getStateMachine().pushState(std::make_unique<VowState>(game, registry, playerEntity));
+    }
     combatSystem->update();
 }
 void PlayState::render()
