@@ -12,8 +12,7 @@ enum class TileState
     WATER,
     FIRE,
     FROZEN,
-    SCORCHED,
-    FLOOR
+    SCORCHED
 };
 
 class Map

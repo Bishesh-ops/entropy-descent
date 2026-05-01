@@ -68,18 +68,19 @@ PlayState::PlayState(Game &gameRef)
         int cx = static_cast<int>(pixelX) / 20;
         int cy = static_cast<int>(pixelY) / 20;
         
-        TileState target = TileState::FLOOR;
-        if (tileType == "FIRE") target = TileState::FIRE;
-        if (tileType == "WATER") target = TileState::WATER;
+        TileState target = TileState::EMPTY;
+        TileState aftermath = TileState::EMPTY;
+        
+        if (tileType == "FIRE") { target = TileState::FIRE; aftermath = TileState::SCORCHED; }
+        if (tileType == "WATER") { target = TileState::WATER; aftermath = TileState::FROZEN; }
 
         int consumed = 0;
         for (int y = cy - gridRadius; y <= cy + gridRadius; ++y) {
             for (int x = cx - gridRadius; x <= cx + gridRadius; ++x) {
-                // Ensure we don't check out of bounds
                 if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
                     if (gameMap.getTileState(x, y) == target) {
                         consumed++;
-                        gameMap.setTileState(x, y, TileState::FLOOR); 
+                        gameMap.setTileState(x, y, aftermath); // Leave a visual mark!
                     }
                 }
             }
@@ -215,6 +216,7 @@ void PlayState::update(float dt)
     movementSystem->update(dt);
     auto &pos = registry.get<Position>(playerEntity);
 
+    // Camera
     if (registry.all_of<Transform>(playerEntity))
     {
         auto &pTransform = registry.get<Transform>(playerEntity);
@@ -222,6 +224,7 @@ void PlayState::update(float dt)
         cameraY = std::clamp(static_cast<int>(pTransform.y) - (game.getWindowHeight() / 2), 0, (MAP_HEIGHT * 20) - game.getWindowHeight());
     }
 
+    // FOV
     static int lastFovX = -1, lastFovY = -1;
     if (pos.x != lastFovX || pos.y != lastFovY || needsFOVUpdate)
     {
@@ -234,8 +237,15 @@ void PlayState::update(float dt)
 
     aiSystem->update(playerEntity, floorDepth, dt);
 
+    static std::mt19937 rng(std::random_device{}());
+    static std::uniform_int_distribution<int> fireDist(-2, 2);
+    static std::uniform_int_distribution<int> phantomDist(-3, 3);
+    static std::uniform_int_distribution<int> chanceDist(0, 99);
     static float entropyTimer = 0.0f;
+    static float cascadeTimer = 0.0f;
     entropyTimer += dt;
+    cascadeTimer += dt;
+
     if (entropyTimer >= 1.0f)
     {
         if (registry.all_of<EntropyStats>(playerEntity))
@@ -247,6 +257,41 @@ void PlayState::update(float dt)
         entropyTimer = 0.0f;
     }
 
+    if (cascadeTimer >= 0.5f)
+    {
+        auto &eStats = registry.get<EntropyStats>(playerEntity);
+
+        if (eStats.entropy >= 86)
+        {
+            int rX = pos.x + fireDist(rng);
+            int rY = pos.y + fireDist(rng);
+            if (gameMap.isFloor(rX, rY))
+            {
+                gameMap.setTileState(rX, rY, TileState::FIRE);
+            }
+        }
+        else if (eStats.entropy >= 61)
+        {
+            if (chanceDist(rng) < 10)
+            {
+                int pX = pos.x + phantomDist(rng);
+                int pY = pos.y + phantomDist(rng);
+                if (gameMap.isFloor(pX, pY))
+                {
+                    auto phantom = registry.create();
+                    registry.emplace<Position>(phantom, pX, pY);
+                    registry.emplace<Transform>(phantom, static_cast<float>(pX * 20), static_cast<float>(pY * 20));
+                    registry.emplace<Hitbox>(phantom, 16.0f, 16.0f, 2.0f, 2.0f);
+                    registry.emplace<Velocity>(phantom, 0.0f, 0.0f, 80.0f);
+                    registry.emplace<Enemy>(phantom);
+                    registry.emplace<Phantom>(phantom);
+                    registry.emplace<RenderColor>(phantom, static_cast<uint8_t>(200), static_cast<uint8_t>(0), static_cast<uint8_t>(200), static_cast<uint8_t>(150));
+                }
+            }
+        }
+        cascadeTimer = 0.0f;
+    }
+
     auto &eStats = registry.get<EntropyStats>(playerEntity);
     if (eStats.entropy >= 100)
     {
@@ -255,7 +300,6 @@ void PlayState::update(float dt)
 
     combatSystem->update(dt);
 }
-
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,
@@ -279,24 +323,27 @@ void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int n
 void PlayState::onDescend(const DescendEvent &event)
 {
     std::vector<entt::entity> toDestroy;
-    auto view = registry.view<entt::entity>();
-    for (auto entity : view)
+
+    for (auto entity : registry.storage<entt::entity>())
     {
-        if (entity == playerEntity)
-            continue;
-        if (!registry.all_of<Position>(entity) && registry.all_of<Item>(entity))
-            continue;
-        toDestroy.push_back(entity);
+        if (entity != playerEntity)
+        {
+            if (registry.all_of<Item>(entity) && !registry.all_of<Position>(entity))
+                continue;
+            toDestroy.push_back(entity);
+        }
     }
 
     for (auto entity : toDestroy)
-        registry.destroy(entity);
+    {
+        if (registry.valid(entity))
+            registry.destroy(entity);
+    }
 
     floorDepth++;
     WorldBuilder::repopulateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems, playerEntity, floorDepth);
     needsFOVUpdate = true;
 }
-
 entt::entity PlayState::getBlockingEntityAt(int x, int y)
 {
     if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT)

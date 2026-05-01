@@ -200,19 +200,20 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
         }
     }
 
-    int startX, startY;
-    while (true)
+    int startX = distX(rng);
+    int startY = distY(rng);
+    while (!gameMap.isFloor(startX, startY))
     {
-        startX = rand() % mapWidth;
-        startY = rand() % mapHeight;
-        if (gameMap.isFloor(startX, startY))
-        {
-            registry.replace<Transform>(existingPlayer, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
-            registry.replace<Velocity>(existingPlayer, 0.0f, 0.0f, 150.0f);
-            registry.emplace<Hitbox>(existingPlayer);
-            spatialGrid[startY * mapWidth + startX] = existingPlayer;
-            break;
-        }
+        startX = distX(rng);
+        startY = distY(rng);
+    }
+
+    registry.emplace_or_replace<Position>(existingPlayer, startX, startY);
+    registry.emplace_or_replace<Transform>(existingPlayer, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
+
+    if (registry.all_of<Velocity>(existingPlayer))
+    {
+        registry.replace<Velocity>(existingPlayer, 0.0f, 0.0f, 150.0f);
     }
 
     if (!enemies.empty())
