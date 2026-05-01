@@ -56,7 +56,6 @@ void PlayState::processInput()
     {
         if (event.type == SDL_EVENT_QUIT)
             game.quit();
-
         if (event.type == SDL_EVENT_KEY_DOWN)
         {
             if (event.key.key == SDLK_ESCAPE)
@@ -65,109 +64,42 @@ void PlayState::processInput()
                 return;
             }
 
-            if (currentTurnState != TurnState::WAITING_FOR_PLAYER)
-                continue;
-
-            bool playerActed = false;
-            auto &pos = registry.get<Position>(playerEntity);
-            int nextX = pos.x;
-            int nextY = pos.y;
-
-            if (event.key.key == SDLK_E)
-            {
-                bool success = false;
-                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::CRYO, &success});
-                playerActed = success;
-            }
-            if (event.key.key == SDLK_F)
-            {
-                bool success = false;
-                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::FIRE, &success});
-                playerActed = success;
-            }
-            if (event.key.key == SDLK_U)
-            {
-                auto &inv = registry.get<Inventory>(playerEntity);
-                if (!inv.items.empty())
-                {
-                    dispatcher.trigger(ItemUseEvent{playerEntity, inv.items[0]});
-                    playerActed = true;
-                }
-                else
-                {
-                    std::cout << "Nothing to use.\n";
-                }
-            }
-            if (event.key.key == SDLK_G)
-            {
-                bool success = false;
-                dispatcher.trigger(ItemPickupEvent{playerEntity, &success});
-                playerActed = success;
-            }
             if (event.key.key == SDLK_PERIOD)
             {
-                auto &playerPos = registry.get<Position>(playerEntity);
-                auto stairsView = registry.view<Position, Stairs>();
-
-                bool onStairs = false;
-                for (auto [entity, pos] : stairsView.each())
-                {
-                    if (pos.x == playerPos.x && pos.y == playerPos.y)
-                    {
-                        onStairs = true;
-                        break;
-                    }
-                }
-
-                if (onStairs)
-                {
-                    dispatcher.trigger(DescendEvent{});
-                    playerActed = true;
-                }
-            }
-
-            if (event.key.key == SDLK_W || event.key.key == SDLK_UP)
-                nextY--;
-            if (event.key.key == SDLK_S || event.key.key == SDLK_DOWN)
-                nextY++;
-            if (event.key.key == SDLK_A || event.key.key == SDLK_LEFT)
-                nextX--;
-            if (event.key.key == SDLK_D || event.key.key == SDLK_RIGHT)
-                nextX++;
-
-            if (nextX != pos.x || nextY != pos.y)
-            {
-                if (gameMap.isFloor(nextX, nextY))
-                {
-                    entt::entity blocker = getBlockingEntityAt(nextX, nextY);
-                    if (blocker != entt::null)
-                    {
-                        if (registry.all_of<Enemy>(blocker))
-                        {
-                            dispatcher.trigger(MeleeAttackEvent{playerEntity, blocker});
-                            playerActed = true;
-                        }
-                    }
-                    else
-                    {
-                        updateSpatialGrid(playerEntity, pos.x, pos.y, nextX, nextY);
-                        pos.x = nextX;
-                        pos.y = nextY;
-                        playerActed = true;
-                    }
-                }
-            }
-
-            if (playerActed)
-            {
-                currentTurnState = TurnState::ENEMY_TURN;
-                needsFOVUpdate = true;
+                dispatcher.trigger(DescendEvent{});
             }
         }
     }
-}
 
-void PlayState::update()
+    // SDL3 uses a boolean array for keyboard state
+    int numKeys;
+    const bool *keyState = SDL_GetKeyboardState(&numKeys);
+
+    if (registry.valid(playerEntity) && registry.all_of<Velocity>(playerEntity))
+    {
+        auto &vel = registry.get<Velocity>(playerEntity);
+        vel.dx = 0.0f;
+        vel.dy = 0.0f;
+
+        if (keyState[SDL_SCANCODE_W] || keyState[SDL_SCANCODE_UP])
+            vel.dy -= 1.0f;
+        if (keyState[SDL_SCANCODE_S] || keyState[SDL_SCANCODE_DOWN])
+            vel.dy += 1.0f;
+        if (keyState[SDL_SCANCODE_A] || keyState[SDL_SCANCODE_LEFT])
+            vel.dx -= 1.0f;
+        if (keyState[SDL_SCANCODE_D] || keyState[SDL_SCANCODE_RIGHT])
+            vel.dx += 1.0f;
+
+        // Normalize the vector so moving diagonally isn't 41% faster
+        if (vel.dx != 0.0f || vel.dy != 0.0f)
+        {
+            float length = std::sqrt(vel.dx * vel.dx + vel.dy * vel.dy);
+            vel.dx /= length;
+            vel.dy /= length;
+        }
+    }
+}
+void PlayState::update(float dt)
 {
     auto &pos = registry.get<Position>(playerEntity);
 

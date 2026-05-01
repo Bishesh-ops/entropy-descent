@@ -25,7 +25,7 @@ class PlayState : public State
 public:
     PlayState(Game &gameRef);
     void processInput() override;
-    void update() override;
+    void update(float dt) override;
     void render() override;
 
 private:

@@ -9,6 +9,17 @@ struct Position
     int x;
     int y;
 };
+struct Transform
+{
+    float x;
+    float y;
+};
+struct Velocity
+{
+    float dx = 0.0f;
+    float dy = 0.0f;
+    float speed = 100.0f; // Pixels per second
+};
 struct Player
 {
 };

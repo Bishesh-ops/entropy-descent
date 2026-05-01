@@ -7,7 +7,7 @@ class MenuState : public State
 public:
     MenuState(Game &gameRef);
     void processInput() override;
-    void update() override;
+    void update(float dt) override;
     void render() override;
 
 private:

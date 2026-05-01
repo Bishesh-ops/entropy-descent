@@ -26,7 +26,7 @@ void MenuState::processInput()
     }
 }
 
-void MenuState::update()
+void MenuState::update(float dt)
 {
     // no update logic for the menu state yet
 }

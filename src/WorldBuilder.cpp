@@ -72,6 +72,8 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
         }
     }
     registry.emplace<Position>(playerEntity, startX, startY);
+    registry.emplace<Transform>(playerEntity, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
+    registry.emplace<Velocity>(playerEntity, 0.0f, 0.0f, 150.0f);
     spatialGrid[startY * mapWidth + startX] = playerEntity;
 
     if (!enemies.empty())
@@ -88,6 +90,9 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
             const EnemyDef &def = enemies[distArch(rng)];
             auto enemy = registry.create();
             registry.emplace<Position>(enemy, ex, ey);
+            registry.emplace<Transform>(enemy, static_cast<float>(ex * 20), static_cast<float>(ey * 20));
+            registry.emplace<Velocity>(enemy, 0.0f, 0.0f, 75.0f);
+
             registry.emplace<Enemy>(enemy);
             registry.emplace<Collider>(enemy);
             registry.emplace<Health>(enemy, def.hp, def.hp);
@@ -196,7 +201,8 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
         startY = rand() % mapHeight;
         if (gameMap.isFloor(startX, startY))
         {
-            registry.replace<Position>(existingPlayer, startX, startY);
+            registry.replace<Transform>(existingPlayer, static_cast<float>(startX * 20), static_cast<float>(startY * 20));
+            registry.replace<Velocity>(existingPlayer, 0.0f, 0.0f, 150.0f);
             spatialGrid[startY * mapWidth + startX] = existingPlayer;
             break;
         }
@@ -217,6 +223,8 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                     auto enemy = registry.create();
 
                     registry.emplace<Position>(enemy, ex, ey);
+                    registry.emplace<Transform>(enemy, static_cast<float>(ex * 20), static_cast<float>(ey * 20));
+                    registry.emplace<Velocity>(enemy, 0.0f, 0.0f, 75.0f);
                     registry.emplace<RenderColor>(enemy, def.r, def.g, def.b, static_cast<uint8_t>(255));
                     registry.emplace<Enemy>(enemy);
                     registry.emplace<Collider>(enemy);

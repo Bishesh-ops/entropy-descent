@@ -81,7 +81,7 @@ void VowState::processInput()
     }
 }
 
-void VowState::update() {}
+void VowState::update(float dt) {}
 
 void VowState::render()
 {

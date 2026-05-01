@@ -10,7 +10,7 @@ class VowState : public State
 public:
     VowState(Game &gameRef, entt::registry &reg, entt::entity player);
     void processInput() override;
-    void update() override;
+    void update(float dt) override;
     void render() override;
     void onEnter() override;
 

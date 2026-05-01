@@ -21,14 +21,22 @@ Game::~Game()
 
 void Game::run()
 {
+    Uint64 lastTime = SDL_GetTicks();
+
     while (isRunning)
     {
+        Uint64 currentTime = SDL_GetTicks();
+        float dt = (currentTime - lastTime) / 1000.0f;
+        lastTime = currentTime;
+
+        if (dt > 0.05f)
+            dt = 0.05f;
         stateMachine.processStateChanges();
 
         if (!stateMachine.isEmpty())
         {
             stateMachine.getActiveState().processInput();
-            stateMachine.getActiveState().update();
+            stateMachine.getActiveState().update(dt);
             stateMachine.getActiveState().render();
         }
         else
