@@ -1,120 +1,53 @@
 #include "../../include/Systems/SpellSystem.hpp"
 #include "../../include/Components.hpp"
 #include <iostream>
-#include <cmath>
 
-SpellSystem::SpellSystem(entt::registry &reg, entt::dispatcher &disp, Map &mapRef, std::vector<entt::entity> &grid, int w, int h, const std::vector<SpellDef> &spells)
-    : registry(reg), dispatcher(disp), gameMap(mapRef), spatialGrid(grid), mapWidth(w), mapHeight(h), loadedSpells(spells)
+SpellSystem::SpellSystem(entt::registry &reg, entt::dispatcher &disp, sol::state &luaState)
+    : registry(reg), dispatcher(disp), lua(luaState)
 {
     dispatcher.sink<SpellCastEvent>().connect<&SpellSystem::onSpellCast>(this);
 }
 
-entt::entity SpellSystem::getBlockingEntityAt(int x, int y)
-{
-    if (x < 0 || y < 0 || x >= mapWidth || y >= mapHeight)
-        return entt::null;
-    return spatialGrid[y * mapWidth + x];
-}
-
 void SpellSystem::onSpellCast(const SpellCastEvent &event)
 {
-    if (!registry.valid(event.caster) || !registry.all_of<Position>(event.caster))
+    if (!registry.valid(event.caster) || !registry.all_of<Transform>(event.caster))
         return;
-    auto &pos = registry.get<Position>(event.caster);
-    const SpellDef *def = nullptr;
-    std::string searchName = (event.type == SpellCastEvent::SpellType::CRYO) ? "Cryo" : "Fire";
-    for (const auto &s : loadedSpells)
+
+    auto &t = registry.get<Transform>(event.caster);
+    int entropyBonus = registry.all_of<EntropyStats>(event.caster) ? registry.get<EntropyStats>(event.caster).bonusAoE : 0;
+    int baseAttack = registry.all_of<CombatStats>(event.caster) ? registry.get<CombatStats>(event.caster).attack : 5;
+
+    std::string spellStr = "MELEE";
+    if (event.type == SpellCastEvent::SpellType::FIRE)
+        spellStr = "FIRE";
+    if (event.type == SpellCastEvent::SpellType::CRYO)
+        spellStr = "CRYO";
+
+    sol::table spellsTable = lua["Spells"];
+    if (spellsTable.valid())
     {
-        if (s.name == searchName)
+        sol::function castFunc = spellsTable["Cast"];
+        if (castFunc.valid())
         {
-            def = &s;
-            break;
-        }
-    }
-
-    int spellCost = def ? def->baseCost : 20;
-    int spellDmg = def ? def->damage : 0;
-
-    bool validTargetFound = false;
-    std::vector<std::pair<int, int>> targetTiles;
-
-    for (int dy = -4; dy <= 4; ++dy)
-    {
-        for (int dx = -4; dx <= 4; ++dx)
-        {
-            if (std::abs(dx) + std::abs(dy) <= 4)
+            auto result = castFunc(spellStr, t.x, t.y, event.targetX, event.targetY, entropyBonus, baseAttack);
+            if (!result.valid())
             {
-                int tx = pos.x + dx;
-                int ty = pos.y + dy;
-                if (tx >= 0 && tx < mapWidth && ty >= 0 && ty < mapHeight)
-                {
-                    TileState currentState = gameMap.getTileState(tx, ty);
-                    if (event.type == SpellCastEvent::SpellType::CRYO && currentState == TileState::WATER)
-                    {
-                        targetTiles.push_back({tx, ty});
-                        validTargetFound = true;
-                    }
-                    else if (event.type == SpellCastEvent::SpellType::FIRE && currentState == TileState::FIRE)
-                    {
-                        targetTiles.push_back({tx, ty});
-                        validTargetFound = true;
-                    }
-                }
+                sol::error err = result;
+                std::cerr << "Lua Spell Cast Error: " << err.what() << "\n";
             }
         }
-    }
-
-    if (validTargetFound)
-    {
-        std::vector<entt::entity> hitEnemies;
-        for (const auto &t : targetTiles)
+        else
         {
-            gameMap.setTileState(t.first, t.second, (event.type == SpellCastEvent::SpellType::CRYO) ? TileState::FROZEN : TileState::SCORCHED);
-            int aoeRadius = 1;
-            if (registry.all_of<EntropyStats>(event.caster))
-            {
-                aoeRadius += registry.get<EntropyStats>(event.caster).bonusAoE;
-            }
-            for (int bY = -aoeRadius; bY <= aoeRadius; ++bY)
-            {
-                for (int bX = -aoeRadius; bX <= aoeRadius; ++bX)
-                {
-                    entt::entity aoeTarget = getBlockingEntityAt(t.first + bX, t.second + bY);
-                    if (aoeTarget != entt::null && registry.all_of<Enemy>(aoeTarget))
-                    {
-                        if (std::find(hitEnemies.begin(), hitEnemies.end(), aoeTarget) == hitEnemies.end())
-                        {
-                            hitEnemies.push_back(aoeTarget);
-                        }
-                    }
-                }
-            }
-        }
-
-        for (auto enemy : hitEnemies)
-        {
-            if (event.type == SpellCastEvent::SpellType::CRYO)
-            {
-                dispatcher.trigger(MeleeAttackEvent{event.caster, enemy});
-            }
-            else if (event.type == SpellCastEvent::SpellType::FIRE)
-            {
-                dispatcher.trigger(DamageEvent{enemy, spellDmg}); // HANDOFF TO COMBAT SYSTEM
-            }
-        }
-
-        if (registry.all_of<EntropyStats>(event.caster))
-        {
-            auto &stats = registry.get<EntropyStats>(event.caster);
-            stats.entropy += spellCost;
-            std::cout << "Exchange successful! Entropy level: " << stats.entropy << std::endl;
+            std::cerr << "C++ Warning: 'Cast' function not found in 'Spells' Lua table.\n";
         }
     }
     else
     {
-        std::cout << "No entropic source nearby.\n";
+        std::cerr << "C++ Warning: 'Spells' table not found in Lua environment. Did spells.lua fail to load?\n";
     }
 
-    if (event.successFlag)
-        *(event.successFlag) = validTargetFound;
+    if (event.type != SpellCastEvent::SpellType::MELEE && registry.all_of<EntropyStats>(event.caster))
+    {
+        registry.get<EntropyStats>(event.caster).entropy += 15;
+    }
 }

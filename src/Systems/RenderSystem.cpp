@@ -67,7 +67,39 @@ void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry
             20.0f, 20.0f};
         SDL_RenderFillRect(renderer, &rect);
     }
+    auto projView = registry.view<Transform, Projectile, RenderColor>();
+    for (auto e : projView)
+    {
+        auto &t = projView.get<Transform>(e);
+        auto &color = projView.get<RenderColor>(e);
 
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+
+        // Draw a 10x10 square for the projectile
+        SDL_FRect rect = {t.x - cameraX, t.y - cameraY, 10.0f, 10.0f};
+        SDL_RenderFillRect(renderer, &rect);
+    }
+
+    // --- 2. Render Particles (with Alpha Blending) ---
+    auto particleView = registry.view<Transform, Particle>();
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND); // Enable opacity fading
+
+    for (auto e : particleView)
+    {
+        auto &t = particleView.get<Transform>(e);
+        auto &p = particleView.get<Particle>(e);
+
+        // Calculate fade out percentage based on remaining life
+        float alphaPct = p.lifeTime / p.maxLife;
+        uint8_t a = static_cast<uint8_t>(255.0f * alphaPct);
+
+        SDL_SetRenderDrawColor(renderer, p.r, p.g, p.b, a);
+
+        // Draw a tiny 4x4 pixel for particles
+        SDL_FRect rect = {t.x - cameraX, t.y - cameraY, 4.0f, 4.0f};
+        SDL_RenderFillRect(renderer, &rect);
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE); // Reset blending for UI
     uiRenderer.render(renderer, registry, playerEntity, windowWidth, windowHeight, floorDepth);
     SDL_RenderPresent(renderer);
 }

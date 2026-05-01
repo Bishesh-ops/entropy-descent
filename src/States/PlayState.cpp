@@ -24,25 +24,56 @@ PlayState::PlayState(Game &gameRef)
       needsFOVUpdate(true),
       spatialGrid(MAP_WIDTH * MAP_HEIGHT, static_cast<entt::entity>(entt::null))
 {
+
     lua.open_libraries(sol::lib::base, sol::lib::math);
     try
     {
         lua.script_file(COMBAT_SCRIPT_PATH);
         lua.script_file(AI_SCRIPT_PATH);
+        lua.script_file("../scripts/spells.lua");
     }
     catch (const sol::error &e)
     {
         std::cerr << "Lua Error: " << e.what() << "\n";
     }
+
+    lua.set_function("SpawnProjectile", [&](float x, float y, float dx, float dy, float speed, int damage, float lifeTime, const std::string &element, int r, int g, int b)
+                     {
+        auto proj = registry.create();
+        registry.emplace<Transform>(proj, x, y);
+        registry.emplace<Velocity>(proj, dx, dy, speed);
+        registry.emplace<Hitbox>(proj, 8.0f, 8.0f, 6.0f, 6.0f);
+        registry.emplace<RenderColor>(proj, static_cast<uint8_t>(r), static_cast<uint8_t>(g), static_cast<uint8_t>(b), static_cast<uint8_t>(255));
+        registry.emplace<Projectile>(proj, lifeTime, damage, element, playerEntity); });
+
+    lua.set_function("SpawnParticles", [&](float x, float y, int count, int r, int g, int b)
+                     {
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> angleDist(0.0f, 6.28318f);
+        std::uniform_real_distribution<float> speedDist(20.0f, 150.0f);
+        std::uniform_real_distribution<float> lifeDist(0.2f, 0.6f);
+
+        for(int i = 0; i < count; ++i) {
+            auto p = registry.create();
+            registry.emplace<Transform>(p, x + 10.0f, y + 10.0f);
+            float angle = angleDist(rng);
+            float speed = speedDist(rng);
+            float life = lifeDist(rng);
+            registry.emplace<Particle>(p, life, life, std::cos(angle)*speed, std::sin(angle)*speed, static_cast<uint8_t>(r), static_cast<uint8_t>(g), static_cast<uint8_t>(b));
+        } });
+
     loadedEnemies = DataLoader::loadEnemyDefs(ENEMY_DATA_PATH);
     loadedItems = DataLoader::loadItemDefs(ITEM_DATA_PATH);
     auto loadedSpells = DataLoader::loadSpellDefs(SPELL_DATA_PATH);
+
+    movementSystem = std::make_unique<MovementSystem>(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, lua, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
     itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
-    spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedSpells);
+    spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, lua);
     aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+
     dispatcher.sink<DescendEvent>().connect<&PlayState::onDescend>(this);
-    movementSystem = std::make_unique<MovementSystem>(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+
     playerEntity = WorldBuilder::generateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems);
 }
 
@@ -53,6 +84,17 @@ void PlayState::processInput()
     {
         if (event.type == SDL_EVENT_QUIT)
             game.quit();
+
+        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+        {
+            if (event.button.button == SDL_BUTTON_LEFT)
+            {
+                float mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::MELEE, mouseX + cameraX, mouseY + cameraY, nullptr});
+            }
+        }
+
         if (event.type == SDL_EVENT_KEY_DOWN)
         {
             if (event.key.key == SDLK_ESCAPE)
@@ -60,15 +102,54 @@ void PlayState::processInput()
                 game.getStateMachine().popState();
                 return;
             }
-
+            if (event.key.key == SDLK_E)
+            {
+                float mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::CRYO, mouseX + cameraX, mouseY + cameraY, nullptr});
+            }
+            if (event.key.key == SDLK_F)
+            {
+                float mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                dispatcher.trigger(SpellCastEvent{playerEntity, SpellCastEvent::SpellType::FIRE, mouseX + cameraX, mouseY + cameraY, nullptr});
+            }
+            if (event.key.key == SDLK_U)
+            {
+                auto &inv = registry.get<Inventory>(playerEntity);
+                if (!inv.items.empty())
+                {
+                    dispatcher.trigger(ItemUseEvent{playerEntity, inv.items[0]});
+                }
+                else
+                {
+                    std::cout << "Nothing to use.\n";
+                }
+            }
+            if (event.key.key == SDLK_G)
+            {
+                bool success = false;
+                dispatcher.trigger(ItemPickupEvent{playerEntity, &success});
+            }
             if (event.key.key == SDLK_PERIOD)
             {
-                dispatcher.trigger(DescendEvent{});
+                auto &playerPos = registry.get<Position>(playerEntity);
+                auto stairsView = registry.view<Position, Stairs>();
+                bool onStairs = false;
+                for (auto [entity, pos] : stairsView.each())
+                {
+                    if (pos.x == playerPos.x && pos.y == playerPos.y)
+                    {
+                        onStairs = true;
+                        break;
+                    }
+                }
+                if (onStairs)
+                    dispatcher.trigger(DescendEvent{});
             }
         }
     }
 
-    // SDL3 uses a boolean array for keyboard state
     int numKeys;
     const bool *keyState = SDL_GetKeyboardState(&numKeys);
 
@@ -87,7 +168,6 @@ void PlayState::processInput()
         if (keyState[SDL_SCANCODE_D] || keyState[SDL_SCANCODE_RIGHT])
             vel.dx += 1.0f;
 
-        // Normalize the vector so moving diagonally isn't 41% faster
         if (vel.dx != 0.0f || vel.dy != 0.0f)
         {
             float length = std::sqrt(vel.dx * vel.dx + vel.dy * vel.dy);
@@ -96,10 +176,10 @@ void PlayState::processInput()
         }
     }
 }
+
 void PlayState::update(float dt)
 {
     movementSystem->update(dt);
-
     auto &pos = registry.get<Position>(playerEntity);
 
     if (registry.all_of<Transform>(playerEntity))
@@ -118,7 +198,9 @@ void PlayState::update(float dt)
         lastFovY = pos.y;
         needsFOVUpdate = false;
     }
+
     aiSystem->update(playerEntity, floorDepth, dt);
+
     static float entropyTimer = 0.0f;
     entropyTimer += dt;
     if (entropyTimer >= 1.0f)
@@ -132,14 +214,15 @@ void PlayState::update(float dt)
         entropyTimer = 0.0f;
     }
 
-    // Check Vow Thresholds
     auto &eStats = registry.get<EntropyStats>(playerEntity);
     if (eStats.entropy >= 100)
     {
         game.getStateMachine().pushState(std::make_unique<VowState>(game, registry, playerEntity));
     }
-    combatSystem->update();
+
+    combatSystem->update(dt);
 }
+
 void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,
@@ -168,23 +251,16 @@ void PlayState::onDescend(const DescendEvent &event)
     {
         if (entity == playerEntity)
             continue;
-
         if (!registry.all_of<Position>(entity) && registry.all_of<Item>(entity))
-        {
             continue;
-        }
         toDestroy.push_back(entity);
     }
 
     for (auto entity : toDestroy)
-    {
         registry.destroy(entity);
-    }
 
     floorDepth++;
-
-    WorldBuilder::repopulateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT,
-                                  loadedEnemies, loadedItems, playerEntity, floorDepth);
+    WorldBuilder::repopulateFloor(registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT, loadedEnemies, loadedItems, playerEntity, floorDepth);
     needsFOVUpdate = true;
 }
 

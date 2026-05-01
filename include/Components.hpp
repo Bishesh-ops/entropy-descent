@@ -90,3 +90,19 @@ struct PendingDestroy
 struct Stairs
 {
 };
+
+struct Projectile
+{
+    float lifeTime;
+    int damage;
+    std::string element;
+    entt::entity caster;
+};
+
+struct Particle
+{
+    float lifeTime;
+    float maxLife;
+    float vx, vy;
+    uint8_t r, g, b;
+};

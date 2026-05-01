@@ -28,8 +28,11 @@ struct SpellCastEvent
     enum class SpellType
     {
         CRYO,
-        FIRE
+        FIRE,
+        MELEE
     } type;
+    float targetX;
+    float targetY;
     bool *successFlag = nullptr;
 };
 

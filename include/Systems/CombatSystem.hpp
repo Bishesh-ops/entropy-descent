@@ -10,7 +10,7 @@ class CombatSystem
 public:
     CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp, sol::state &luaState, std::vector<entt::entity> &grid, int w, int h);
     // Handles deferred destruction
-    void update();
+    void update(float dt);
 
     void onMeleeAttack(const MeleeAttackEvent &event);
     void onEntityDeath(const EntityDeathEvent &event);

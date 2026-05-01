@@ -11,7 +11,7 @@ CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher 
     dispatcher.sink<HealEvent>().connect<&CombatSystem::onHeal>(this);
 }
 
-void CombatSystem::update()
+void CombatSystem::update(float dt)
 {
     auto view = registry.view<PendingDestroy>();
     std::vector<entt::entity> toDestroy(view.begin(), view.end());
@@ -30,6 +30,70 @@ void CombatSystem::update()
         }
         registry.destroy(deadEntity);
     }
+    auto pView = registry.view<Transform, Particle>();
+    std::vector<entt::entity> deadParticles;
+    for (auto e : pView)
+    {
+        auto &t = pView.get<Transform>(e);
+        auto &p = pView.get<Particle>(e);
+        t.x += p.vx * dt;
+        t.y += p.vy * dt;
+        p.lifeTime -= dt;
+        if (p.lifeTime <= 0.0f)
+            deadParticles.push_back(e);
+    }
+    for (auto e : deadParticles)
+        registry.destroy(e);
+
+    auto projView = registry.view<Transform, Velocity, Hitbox, Projectile>();
+    auto enemyView = registry.view<Transform, Hitbox, Enemy>();
+    std::vector<entt::entity> deadProjectiles;
+
+    for (auto pEntity : projView)
+    {
+        auto &pT = projView.get<Transform>(pEntity);
+        auto &pV = projView.get<Velocity>(pEntity);
+        auto &pH = projView.get<Hitbox>(pEntity);
+        auto &proj = projView.get<Projectile>(pEntity);
+
+        proj.lifeTime -= dt;
+        if (proj.lifeTime <= 0.0f)
+        {
+            deadProjectiles.push_back(pEntity);
+            continue;
+        }
+
+        pT.x += pV.dx * pV.speed * dt;
+        pT.y += pV.dy * pV.speed * dt;
+
+        float pLeft = pT.x + pH.offsetX;
+        float pRight = pLeft + pH.width;
+        float pTop = pT.y + pH.offsetY;
+        float pBot = pTop + pH.height;
+
+        bool hit = false;
+        for (auto eEntity : enemyView)
+        {
+            auto &eT = enemyView.get<Transform>(eEntity);
+            auto &eH = enemyView.get<Hitbox>(eEntity);
+
+            if (pLeft < eT.x + eH.offsetX + eH.width && pRight > eT.x + eH.offsetX &&
+                pTop < eT.y + eH.offsetY + eH.height && pBot > eT.y + eH.offsetY)
+            {
+
+                dispatcher.trigger(DamageEvent{eEntity, proj.damage});
+
+                lua["SpawnParticles"](eT.x, eT.y, 10, 200, 20, 20);
+
+                hit = true;
+                break;
+            }
+        }
+        if (hit)
+            deadProjectiles.push_back(pEntity);
+    }
+    for (auto e : deadProjectiles)
+        registry.destroy(e);
 }
 
 void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event)
