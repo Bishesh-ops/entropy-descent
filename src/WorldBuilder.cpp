@@ -121,6 +121,8 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
             registry.emplace<Item>(item);
             registry.emplace<ItemEffect>(item, def.effectType, def.magnitude);
             registry.emplace<RenderColor>(item, def.r, def.g, def.b, def.a);
+            registry.emplace<Transform>(item, static_cast<float>(ix * 20), static_cast<float>(iy * 20));
+            registry.emplace<Hitbox>(item, 10.0f, 10.0f, 5.0f, 5.0f);
         }
     }
 
@@ -139,6 +141,8 @@ entt::entity WorldBuilder::generateFloor(entt::registry &registry, Map &gameMap,
                 registry.emplace<Position>(stairs, sx, sy);
                 registry.emplace<Stairs>(stairs);
                 registry.emplace<RenderColor>(stairs, static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(0), static_cast<uint8_t>(255));
+                registry.emplace<Transform>(stairs, static_cast<float>(sx * 20), static_cast<float>(sy * 20));
+                registry.emplace<Hitbox>(stairs, 16.0f, 16.0f, 2.0f, 2.0f);
                 break;
             }
         }
@@ -280,6 +284,8 @@ void WorldBuilder::repopulateFloor(entt::registry &registry, Map &gameMap, std::
                 registry.emplace<Position>(stairs, sx, sy);
                 registry.emplace<Stairs>(stairs);
                 registry.emplace<RenderColor>(stairs, static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(0), static_cast<uint8_t>(255));
+                registry.emplace<Transform>(stairs, static_cast<float>(sx * 20), static_cast<float>(sy * 20));
+                registry.emplace<Hitbox>(stairs, 16.0f, 16.0f, 2.0f, 2.0f);
                 break;
             }
         }
