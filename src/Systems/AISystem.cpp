@@ -140,9 +140,21 @@ void AISystem::update(entt::entity playerEntity, int floorDepth, float dt)
             auto &pStats = registry.get<EntropyStats>(playerEntity);
             if (pStats.hasPassiveAura && gameMap.isVisible(enemyPos.x, enemyPos.y))
             {
-                // TODO in Phase 4: Throttle this with a timer so it damages over time (DPS)
-                // instead of triggering every frame!
-                // dispatcher.trigger(DamageEvent{entity, 5});
+                if (enemy.auraTickTimer > 0.0f)
+                {
+                    enemy.auraTickTimer -= dt;
+                }
+                else
+                {
+                    dispatcher.trigger(DamageEvent{entity, 5});
+                    enemy.auraTickTimer = 1.0f;
+
+                    sol::function spawnFunc = lua["SpawnParticles"];
+                    if (spawnFunc.valid())
+                    {
+                        spawnFunc(enemyTransform.x, enemyTransform.y, 3, 150, 0, 255);
+                    }
+                }
             }
         }
     }

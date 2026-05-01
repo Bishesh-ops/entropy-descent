@@ -71,12 +71,38 @@ void VowState::processInput()
     {
         if (event.type == SDL_EVENT_QUIT)
             game.quit();
+
         if (event.type == SDL_EVENT_KEY_DOWN)
         {
+            if (!registry.valid(playerEntity) || !registry.all_of<EntropyStats>(playerEntity))
+            {
+                game.getStateMachine().popState();
+                return;
+            }
+
+            auto &stats = registry.get<EntropyStats>(playerEntity);
+
             if (event.key.key == SDLK_1)
-                applyVow(choice1);
-            if (event.key.key == SDLK_2)
-                applyVow(choice2);
+            {
+                std::cout << "\nYOU HAVE TAKEN THE Vow of the Blind Seer. REALITY WARPS.\n";
+                stats.fovRadius = std::max(1, stats.fovRadius - 3);
+                stats.bonusAoE += 2;
+
+                stats.entropy = 0;
+                game.getStateMachine().popState();
+            }
+            else if (event.key.key == SDLK_2)
+            {
+                std::cout << "\nYOU HAVE TAKEN THE Vow of the Pacifist. THE ABYSS WEEPS.\n";
+                if (registry.all_of<CombatStats>(playerEntity))
+                {
+                    registry.get<CombatStats>(playerEntity).attack = 1;
+                }
+                stats.hasPassiveAura = true;
+
+                stats.entropy = 0;
+                game.getStateMachine().popState();
+            }
         }
     }
 }

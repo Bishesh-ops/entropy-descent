@@ -34,6 +34,7 @@ struct Hitbox
 struct Enemy
 {
     float attackCooldown = 0.0f;
+    float auraTickTimer = 0.0f;
 };
 struct Collider
 {
