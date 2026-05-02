@@ -21,16 +21,36 @@ std::vector<EnemyDef> DataLoader::loadEnemyDefs(const std::string &filepath)
         json j;
         file >> j;
 
-        // Iterate through the dictionary keys instead of an array
-        for (auto &[key, value] : j["enemies"].items())
+        if (!j.is_array()) {
+            std::cerr << "FATAL ERROR: " << filepath << " is not a JSON Array!" << std::endl;
+            return defs;
+        }
+
+        for (const auto& value : j)
         {
             EnemyDef def;
-            def.id = key;
-            def.hp = value.value("hp", 10);
-            def.attack = value.value("attack", 1);
-            def.defense = value.value("defense", 0);
 
-            // Parse the color array securely
+            def.id = value.value("id", "unknown_id");
+            
+
+            if (value.contains("components")) {
+                auto& comps = value["components"];
+                
+                if (comps.contains("Health")) {
+                    def.hp = comps["Health"].value("max", 10);
+                } else {
+                    def.hp = 10;
+                }
+                
+                if (comps.contains("CombatStats")) {
+                    def.attack = comps["CombatStats"].value("attack", 1);
+                } else {
+                    def.attack = 1;
+                }
+                
+                def.defense = 0; 
+            }
+
             if (value.contains("color") && value["color"].is_array() && value["color"].size() == 4)
             {
                 def.r = value["color"][0];
@@ -40,7 +60,6 @@ std::vector<EnemyDef> DataLoader::loadEnemyDefs(const std::string &filepath)
             }
             else
             {
-                // Fallback magenta if the JSON color array is missing or broken
                 def.r = 255;
                 def.g = 0;
                 def.b = 255;
