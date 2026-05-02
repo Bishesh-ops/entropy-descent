@@ -1,16 +1,542 @@
-{
-    "enemies":{
-        "corrupted_husk":{
-            "hp": 20,
-            "attack": 5,
-            "defense": 2,
-            "color": [255, 0, 0, 255]
-        },
-        "entropic_brute": {
-            "hp": 50,
-            "attack": 12,
-            "defense": 5,
-            "color": [200, 50, 100, 255]
+[
+    {
+        "id": "enemy_000",
+        "name": "Nimble Skeleton",
+        "components": {
+            "Health": {
+                "max": 12,
+                "current": 12
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 120.0
+            }
+        }
+    },
+    {
+        "id": "enemy_001",
+        "name": "Phantom",
+        "components": {
+            "Health": {
+                "max": 10,
+                "current": 10
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 150.0
+            }
+        }
+    },
+    {
+        "id": "enemy_002",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_003",
+        "name": "Nimble Phantom",
+        "components": {
+            "Health": {
+                "max": 8,
+                "current": 8
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 225.0
+            }
+        }
+    },
+    {
+        "id": "enemy_004",
+        "name": "Skeleton",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
+        }
+    },
+    {
+        "id": "enemy_005",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_006",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_007",
+        "name": "Skeleton",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
+        }
+    },
+    {
+        "id": "enemy_008",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_009",
+        "name": "Entropic Goblin",
+        "components": {
+            "Health": {
+                "max": 30,
+                "current": 30
+            },
+            "CombatStats": {
+                "attack": 7
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_010",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_011",
+        "name": "Entropic Phantom",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 18
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 150.0
+            }
+        }
+    },
+    {
+        "id": "enemy_012",
+        "name": "Entropic Orc",
+        "components": {
+            "Health": {
+                "max": 60,
+                "current": 60
+            },
+            "CombatStats": {
+                "attack": 18
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_013",
+        "name": "Armored Skeleton",
+        "components": {
+            "Health": {
+                "max": 30,
+                "current": 30
+            },
+            "CombatStats": {
+                "attack": 6
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 64.0
+            }
+        }
+    },
+    {
+        "id": "enemy_014",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_015",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_016",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_017",
+        "name": "Skeleton",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
+        }
+    },
+    {
+        "id": "enemy_018",
+        "name": "Skeleton",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
+        }
+    },
+    {
+        "id": "enemy_019",
+        "name": "Entropic Phantom",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 18
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 150.0
+            }
+        }
+    },
+    {
+        "id": "enemy_020",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_021",
+        "name": "Armored Orc",
+        "components": {
+            "Health": {
+                "max": 80,
+                "current": 80
+            },
+            "CombatStats": {
+                "attack": 9
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 72.0
+            }
+        }
+    },
+    {
+        "id": "enemy_022",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_023",
+        "name": "Goblin",
+        "components": {
+            "Health": {
+                "max": 20,
+                "current": 20
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 100.0
+            }
+        }
+    },
+    {
+        "id": "enemy_024",
+        "name": "Entropic Phantom",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 18
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 150.0
+            }
+        }
+    },
+    {
+        "id": "enemy_025",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_026",
+        "name": "Armored Goblin",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 4
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
+        }
+    },
+    {
+        "id": "enemy_027",
+        "name": "Nimble Goblin",
+        "components": {
+            "Health": {
+                "max": 16,
+                "current": 16
+            },
+            "CombatStats": {
+                "attack": 5
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 150.0
+            }
+        }
+    },
+    {
+        "id": "enemy_028",
+        "name": "Orc",
+        "components": {
+            "Health": {
+                "max": 40,
+                "current": 40
+            },
+            "CombatStats": {
+                "attack": 12
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 90.0
+            }
+        }
+    },
+    {
+        "id": "enemy_029",
+        "name": "Skeleton",
+        "components": {
+            "Health": {
+                "max": 15,
+                "current": 15
+            },
+            "CombatStats": {
+                "attack": 8
+            },
+            "Velocity": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "speed": 80.0
+            }
         }
     }
-}
+]
