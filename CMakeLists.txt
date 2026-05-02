@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
+# --- Define ImGui Directory ---
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/imgui)
+
 # --- Dependencies ---
 find_package(SDL3 REQUIRED)
 find_package(Lua 5.4 EXACT REQUIRED)
@@ -27,17 +30,23 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3 
 )
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE) 
+FetchContent_MakeAvailable(json)
+
+# Fetch sol2
 FetchContent_Declare(
     sol2
     GIT_REPOSITORY https://github.com/ThePhD/sol2.git
     GIT_TAG        v3.3.1 
 )
-
-
-set(JSON_BuildTests OFF CACHE BOOL "" FORCE) 
-FetchContent_MakeAvailable(json)
 FetchContent_MakeAvailable(sol2)
 
+# --- Gather ImGui Source Files ---
+file(GLOB IMGUI_SOURCES
+    "${IMGUI_DIR}/*.cpp"
+)
+
+# --- Build Executable ---
 add_executable(Roguelike 
     src/main.cpp 
     src/Game.cpp 
@@ -57,8 +66,11 @@ add_executable(Roguelike
     src/Systems/ItemSystem.cpp
     src/Systems/AISystem.cpp
     src/Systems/MovementSystem.cpp
-)
-target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR})
 
-# Link SDL3, EnTT, and JSON
+    # ImGui
+    ${IMGUI_SOURCES}
+)
+
+target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR} ${IMGUI_DIR})
+
 target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})

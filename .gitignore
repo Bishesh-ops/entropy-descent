@@ -70,4 +70,4 @@ Thumbs.db
 ENTROPY-DESCENT-CONTEXT.md
 ENTROPY-DESCENT-PLAN.md
 
-venv/
+venv/*
