@@ -95,5 +95,5 @@ void RenderSystem::update(SDL_Renderer *renderer, const entt::registry &registry
     }
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
     uiRenderer.render(renderer, registry, playerEntity, windowWidth, windowHeight, floorDepth);
-    SDL_RenderPresent(renderer);
+    // SDL_RenderPresent(renderer);
 }

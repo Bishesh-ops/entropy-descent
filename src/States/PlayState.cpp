@@ -4,6 +4,9 @@
 #include "../../include/DataLoader.hpp"
 #include "../../include/WorldBuilder.hpp"
 #include "../../include/States/VowState.hpp"
+#include "../../third_party/imgui/imgui.h"
+#include "../../third_party/imgui/imgui_impl_sdl3.h"
+#include "../../third_party/imgui/imgui_impl_sdlrenderer3.h"
 #include <iostream>
 #include <random>
 #include <string>
@@ -116,9 +119,15 @@ void PlayState::processInput()
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
+        ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT)
             game.quit();
 
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureMouse && (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP || event.type == SDL_EVENT_MOUSE_MOTION))
+            continue;
+        if (io.WantCaptureKeyboard && (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP))
+            continue;
         if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
         {
             if (event.button.button == SDL_BUTTON_LEFT)
@@ -304,6 +313,48 @@ void PlayState::render()
 {
     renderSystem.update(game.getRenderer(), registry, gameMap, cameraX, cameraY,
                         game.getWindowWidth(), game.getWindowHeight(), uiRenderer, playerEntity, floorDepth);
+
+    ImGui::Begin("Entity Inspector", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    
+    for (auto entity : registry.storage<entt::entity>())
+    {
+        uint32_t eId = static_cast<uint32_t>(entity);
+        std::string nodeName = "Entity " + std::to_string(eId);
+        
+        if (registry.all_of<Player>(entity)) nodeName += " [Player]";
+        else if (registry.all_of<Enemy>(entity)) nodeName += " [Enemy]";
+        else if (registry.all_of<Item>(entity)) nodeName += " [Item]";
+        else if (registry.all_of<Projectile>(entity)) nodeName += " [Projectile]";
+        
+        if (ImGui::TreeNode((void*)(intptr_t)eId, "%s", nodeName.c_str()))
+        {
+            if (registry.all_of<Position>(entity)) {
+                auto& pos = registry.get<Position>(entity);
+                ImGui::Text("Grid Pos: (%d, %d)", pos.x, pos.y);
+            }
+            if (registry.all_of<Transform>(entity)) {
+                auto& t = registry.get<Transform>(entity);
+                ImGui::DragFloat2("Transform (X, Y)", &t.x, 0.5f);
+            }
+            if (registry.all_of<Velocity>(entity)) {
+                auto& v = registry.get<Velocity>(entity);
+                ImGui::DragFloat("Speed", &v.speed, 1.0f);
+                ImGui::Text("Dir: (%.2f, %.2f)", v.dx, v.dy);
+            }
+            if (registry.all_of<Health>(entity)) {
+                auto& hp = registry.get<Health>(entity);
+                ImGui::ProgressBar(static_cast<float>(hp.current) / hp.max, ImVec2(-1.0f, 0.0f), 
+                    (std::to_string(hp.current) + "/" + std::to_string(hp.max)).c_str());
+            }
+            if (registry.all_of<CombatStats>(entity)) {
+                auto& stats = registry.get<CombatStats>(entity);
+                ImGui::InputInt("Attack", &stats.attack);
+                ImGui::InputInt("Defense", &stats.defense);
+            }
+            ImGui::TreePop();
+        }
+    }
+    ImGui::End();
 }
 
 void PlayState::updateSpatialGrid(entt::entity entity, int oldX, int oldY, int newX, int newY)
