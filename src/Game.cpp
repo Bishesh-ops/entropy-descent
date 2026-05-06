@@ -1,6 +1,7 @@
 #include "../include/Game.hpp"
 #include "../include/States/MenuState.hpp"
 #include <iostream>
+#include <SDL3_mixer/SDL_mixer.h>
 
 #include "../third_party/imgui/imgui.h"
 #include "../third_party/imgui/imgui_impl_sdl3.h"
@@ -8,7 +9,14 @@
 
 Game::Game() : isRunning(true), windowWidth(800), windowHeight(600)
 {
-    SDL_Init(SDL_INIT_VIDEO);
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << "\n";
+    }
+
+    if (Mix_OpenAudio(0, nullptr) < 0) {
+        std::cerr << "SDL_mixer Error: " << Mix_GetError() << "\n";
+    }
+
     window = SDL_CreateWindow("Narrative Roguelike", windowWidth, windowHeight, 0);
     renderer = SDL_CreateRenderer(window, NULL);
 
@@ -31,8 +39,8 @@ Game::~Game()
 {
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
-
+    ImGui::DestroyContext(); 
+    Mix_CloseAudio();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
