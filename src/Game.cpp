@@ -6,7 +6,7 @@
 #include "../third_party/imgui/imgui.h"
 #include "../third_party/imgui/imgui_impl_sdl3.h"
 #include "../third_party/imgui/imgui_impl_sdlrenderer3.h"
-
+//Testing
 Game::Game() : isRunning(true), windowWidth(800), windowHeight(600)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
