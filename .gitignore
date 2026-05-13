@@ -71,3 +71,4 @@ ENTROPY-DESCENT-CONTEXT.md
 ENTROPY-DESCENT-PLAN.md
 
 venv/*
+/src/_deps
