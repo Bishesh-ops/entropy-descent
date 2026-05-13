@@ -11,6 +11,7 @@ set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/imgui)
 
 # --- Dependencies ---
 find_package(SDL3 REQUIRED)
+find_package(SDL3_mixer REQUIRED)
 find_package(Lua 5.4 EXACT REQUIRED)
 
 include(FetchContent)
@@ -71,6 +72,19 @@ add_executable(Roguelike
     ${IMGUI_SOURCES}
 )
 
-target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR} ${IMGUI_DIR})
+target_include_directories(Roguelike PRIVATE 
+    include 
+    ${LUA_INCLUDE_DIR} 
+    ${IMGUI_DIR}
+    ${entt_SOURCE_DIR}/src
+    ${json_SOURCE_DIR}/include
+    ${sol2_SOURCE_DIR}/include
+)
 
-target_link_libraries(Roguelike PRIVATE SDL3::SDL3 EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
+target_link_libraries(Roguelike PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
+
+# Copy assets to build directory
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/scripts DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# If you create an assets folder for audio/images later:
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
