@@ -72,7 +72,14 @@ add_executable(Roguelike
     ${IMGUI_SOURCES}
 )
 
-target_include_directories(Roguelike PRIVATE include ${LUA_INCLUDE_DIR} ${IMGUI_DIR})
+target_include_directories(Roguelike PRIVATE 
+    include 
+    ${LUA_INCLUDE_DIR} 
+    ${IMGUI_DIR}
+    ${entt_SOURCE_DIR}/src
+    ${json_SOURCE_DIR}/include
+    ${sol2_SOURCE_DIR}/include
+)
 
 target_link_libraries(Roguelike PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
 
