@@ -117,8 +117,9 @@ PlayState::PlayState(Game &gameRef)
 
   movementSystem = std::make_unique<MovementSystem>(
       registry, gameMap, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
-  combatSystem = std::make_unique<CombatSystem>(
-      game, registry, dispatcher, lua, spatialGrid, MAP_WIDTH, MAP_HEIGHT);
+  combatSystem = std::make_unique<CombatSystem>(game, registry, dispatcher, lua,
+                                                spatialGrid, MAP_WIDTH,
+                                                MAP_HEIGHT, floorDepth);
   itemSystem = std::make_unique<ItemSystem>(registry, dispatcher);
   spellSystem = std::make_unique<SpellSystem>(registry, dispatcher, lua);
   aiSystem = std::make_unique<AISystem>(registry, dispatcher, lua, gameMap,

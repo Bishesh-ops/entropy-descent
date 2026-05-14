@@ -12,7 +12,7 @@ class CombatSystem {
 public:
   CombatSystem(Game &gameRef, entt::registry &reg, entt::dispatcher &disp,
                sol::state &luaState, std::vector<entt::entity> &grid, int w,
-               int h);
+               int h, const int &floorDepth);
   ~CombatSystem();
 
   void update(float dt);
@@ -30,6 +30,7 @@ private:
   sol::state &lua;
   int mapWidth;
   int mapHeight;
+  const int &floorDepth;
 
   // Modern uncompressed/compressed cached RAM audio assets
   MIX_Audio *hitAudio = nullptr;

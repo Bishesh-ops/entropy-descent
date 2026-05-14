@@ -4,19 +4,20 @@
 
 CombatSystem::CombatSystem(Game &gameRef, entt::registry &reg,
                            entt::dispatcher &disp, sol::state &luaState,
-                           std::vector<entt::entity> &grid, int w, int h)
+                           std::vector<entt::entity> &grid, int w, int h,
+                           const int &floorDepth)
     : game(gameRef), registry(reg), dispatcher(disp), lua(luaState),
-      spatialGrid(grid), mapWidth(w), mapHeight(h) {
+      spatialGrid(grid), mapWidth(w), mapHeight(h), floorDepth(floorDepth) {
   dispatcher.sink<MeleeAttackEvent>().connect<&CombatSystem::onMeleeAttack>(
       this);
   dispatcher.sink<EntityDeathEvent>().connect<&CombatSystem::onEntityDeath>(
       this);
   dispatcher.sink<DamageEvent>().connect<&CombatSystem::onDamage>(this);
   dispatcher.sink<HealEvent>().connect<&CombatSystem::onHeal>(this);
-
   // Predecode files straight to RAM buffer caching
   if (game.getMixer()) {
     hitAudio = MIX_LoadAudio(game.getMixer(), "assets/audio/hit.wav", true);
+
     deathAudio = MIX_LoadAudio(game.getMixer(), "assets/audio/death.wav", true);
 
     if (!hitAudio || !deathAudio) {
@@ -137,8 +138,9 @@ void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event) {
 void CombatSystem::onEntityDeath(const EntityDeathEvent &event) {
   if (registry.all_of<Player>(event.deadEntity)) {
     std::cout << "Player Vital Signs Lost. GAME OVER." << std::endl;
-    game.getStateMachine().pushState(std::make_unique<GameOverState>(game, 1));
-    // game.quit();
+    game.getStateMachine().pushState(
+        std::make_unique<GameOverState>(game, floorDepth));
+    // game.quit();-
   } else {
     std::cout << "Enemy shattered into entropy!" << std::endl;
 
