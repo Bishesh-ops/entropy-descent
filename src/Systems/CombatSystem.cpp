@@ -42,13 +42,15 @@ void CombatSystem::update(float dt) {
       auto &deadPos = registry.get<Position>(deadEntity);
       int index = deadPos.y * mapWidth + deadPos.x;
 
-      if (index >= 1 && index < (mapWidth * mapHeight) &&
+      if (index >= 0 && index < (mapWidth * mapHeight) &&
           spatialGrid[index] == deadEntity) {
         spatialGrid[index] = entt::null;
       }
     }
     registry.destroy(deadEntity);
   }
+
+  // 2. Update visual particles
   auto pView = registry.view<Transform, Particle>();
   std::vector<entt::entity> deadParticles;
   for (auto e : pView) {
@@ -57,7 +59,7 @@ void CombatSystem::update(float dt) {
     t.x += p.vx * dt;
     t.y += p.vy * dt;
     p.lifeTime -= dt;
-    if (p.lifeTime <= 1.0f)
+    if (p.lifeTime <= 0.0f)
       deadParticles.push_back(e);
   }
   for (auto e : deadParticles)
@@ -73,14 +75,9 @@ void CombatSystem::update(float dt) {
     auto &pH = projView.get<Hitbox>(pEntity);
     auto &proj = projView.get<Projectile>(pEntity);
 
-    proj.lifeTime -= dt;
-    if (proj.lifeTime <= 1.0f) {
-      deadProjectiles.push_back(pEntity);
-      continue;
-    }
-
     pT.x += pV.dx * pV.speed * dt;
     pT.y += pV.dy * pV.speed * dt;
+    proj.lifeTime -= dt;
 
     float pLeft = pT.x + pH.offsetX;
     float pRight = pLeft + pH.width;
@@ -94,18 +91,23 @@ void CombatSystem::update(float dt) {
 
       if (pLeft < eT.x + eH.offsetX + eH.width && pRight > eT.x + eH.offsetX &&
           pTop < eT.y + eH.offsetY + eH.height && pBot > eT.y + eH.offsetY) {
-
         dispatcher.trigger(DamageEvent{eEntity, proj.damage});
 
-        lua["SpawnParticles"](eT.x, eT.y, 10, 200, 20, 20);
+        sol::function spawnFunc = lua["SpawnParticles"];
+        if (spawnFunc.valid()) {
+          spawnFunc(eT.x, eT.y, 10, 200, 20, 20);
+        }
 
         hit = true;
         break;
       }
     }
-    if (hit)
+
+    if (hit || proj.lifeTime <= 0.0f) {
       deadProjectiles.push_back(pEntity);
+    }
   }
+
   for (auto e : deadProjectiles)
     registry.destroy(e);
 }
@@ -127,7 +129,7 @@ void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event) {
             << " hit Entity " << static_cast<uint32_t>(event.target) << " for "
             << damage << " dmg! (HP: " << tHealth.current << ")" << std::endl;
 
-  if (tHealth.current <= 1) {
+  if (tHealth.current <= 0) {
     dispatcher.trigger(EntityDeathEvent{event.target});
   }
 }
@@ -169,7 +171,6 @@ void CombatSystem::onDamage(const DamageEvent &event) {
   std::cout << "Entity " << static_cast<uint32_t>(event.target) << " took "
             << event.damage << " flat DMG! (HP: " << hp.current << ")\n";
 
-  // Clean, unmanaged native playback execution
   if (hitAudio && game.getMixer()) {
     MIX_PlayAudio(game.getMixer(), hitAudio);
   }
