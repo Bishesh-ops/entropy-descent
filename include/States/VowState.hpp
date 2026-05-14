@@ -1,5 +1,6 @@
 #pragma once
 #include "../Definitions.hpp"
+#include "../FontRenderer.hpp"
 #include "../Game.hpp"
 #include "State.hpp"
 #include <entt/entt.hpp>
@@ -20,6 +21,8 @@ private:
 
   std::vector<VowDef> allVows;
   std::vector<VowDef> offeredChoices;
+
+  std::unique_ptr<FontRenderer> fontRenderer;
 
   void applyVow(const VowDef &vow);
 };

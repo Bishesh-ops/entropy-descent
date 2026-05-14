@@ -25,7 +25,13 @@ FetchContent_Declare(
 set(ENTT_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(entt)
 
-# Fetch nlohmann/json
+FetchContent_Declare(
+    SDL3_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG        main 
+)
+FetchContent_MakeAvailable(SDL3_ttf)
+
 FetchContent_Declare(
     json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -54,11 +60,13 @@ add_executable(Roguelike
     src/DataLoader.cpp 
     src/UIRenderer.cpp
     src/WorldBuilder.cpp
-    
+    src/FontRenderer.cpp 
     # States
     src/States/MenuState.cpp 
     src/States/PlayState.cpp 
     src/States/VowState.cpp
+    src/States/WinState.cpp
+    src/States/GameOverState.cpp  
     
     # Systems
     src/Systems/RenderSystem.cpp
@@ -81,7 +89,7 @@ target_include_directories(Roguelike PRIVATE
     ${sol2_SOURCE_DIR}/include
 )
 
-target_link_libraries(Roguelike PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
+target_link_libraries(Roguelike PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer SDL3_ttf::SDL3_ttf EnTT::EnTT nlohmann_json::nlohmann_json sol2::sol2 ${LUA_LIBRARIES})
 
 # Copy assets to build directory
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

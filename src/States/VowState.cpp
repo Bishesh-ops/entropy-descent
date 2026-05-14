@@ -12,6 +12,8 @@ VowState::VowState(Game &gameRef, entt::registry &reg, entt::entity player)
   offeredChoices = allVows;
   std::mt19937 rng(std::random_device{}());
   std::shuffle(offeredChoices.begin(), offeredChoices.end(), rng);
+  fontRenderer =
+      std::make_unique<FontRenderer>("assets/fonts/JetBrainsMono.ttf", 24);
 
   if (offeredChoices.size() > 3) {
     offeredChoices.resize(3);
@@ -85,37 +87,36 @@ void VowState::update(float dt) {}
 
 void VowState::render() {
   SDL_Renderer *renderer = game.getRenderer();
-
   SDL_SetRenderDrawColor(renderer, 10, 0, 15, 230);
   SDL_RenderClear(renderer);
 
   int w = game.getWindowWidth();
   int h = game.getWindowHeight();
 
-  if (!offeredChoices.empty()) {
-    float colWidth = static_cast<float>(w) / offeredChoices.size();
-    float rectW = colWidth * 0.8f;
-    float gap = colWidth * 0.1f;
+  // Draw Pathway Boxes...
+  SDL_FRect rect1 = {w * 0.1f, h * 0.2f, w * 0.35f, h * 0.6f};
+  SDL_SetRenderDrawColor(renderer, 80, 20, 30, 255);
+  SDL_RenderFillRect(renderer, &rect1);
 
-    for (size_t i = 0; i < offeredChoices.size(); ++i) {
-      SDL_FRect rect = {i * colWidth + gap, h * 0.2f, rectW, h * 0.6f};
+  SDL_FRect rect2 = {w * 0.55f, h * 0.2f, w * 0.35f, h * 0.6f};
+  SDL_SetRenderDrawColor(renderer, 20, 30, 80, 255);
+  SDL_RenderFillRect(renderer, &rect2);
 
-      if (i == 0) {
-        SDL_SetRenderDrawColor(renderer, 100, 20, 30, 255);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 255, 50, 50, 255);
-      } else if (i == 1) {
-        SDL_SetRenderDrawColor(renderer, 20, 30, 100, 255);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 50, 100, 255, 255);
-      } else {
-        SDL_SetRenderDrawColor(renderer, 60, 20, 80, 255);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 180, 50, 255, 255);
-      }
-      SDL_RenderRect(renderer, &rect);
-    }
+  // Native SDL_ttf Text Overlays mapping over structural boxes
+  if (fontRenderer) {
+    fontRenderer->draw(renderer, "CRITICAL ENTROPY", w * 0.38f, h * 0.08f,
+                       {255, 50, 50, 255});
+
+    // Left Choice Card
+    fontRenderer->draw(renderer, "[1] " + offeredChoices[0].name, rect1.x + 20,
+                       rect1.y + 30, {255, 200, 100, 255});
+    fontRenderer->draw(renderer, offeredChoices[0].description, rect1.x + 20,
+                       rect1.y + 80, {200, 200, 200, 255});
+
+    // Right Choice Card
+    fontRenderer->draw(renderer, "[2] " + offeredChoices[1].name, rect2.x + 20,
+                       rect2.y + 30, {100, 200, 255, 255});
+    fontRenderer->draw(renderer, offeredChoices[1].description, rect2.x + 20,
+                       rect2.y + 80, {200, 200, 200, 255});
   }
-
-  SDL_RenderPresent(renderer);
 }

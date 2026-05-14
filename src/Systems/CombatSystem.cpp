@@ -136,8 +136,9 @@ void CombatSystem::onMeleeAttack(const MeleeAttackEvent &event) {
 
 void CombatSystem::onEntityDeath(const EntityDeathEvent &event) {
   if (registry.all_of<Player>(event.deadEntity)) {
-    std::cout << "YOU HAVE DESCENDED. GAME OVER." << std::endl;
-    game.quit();
+    std::cout << "Player Vital Signs Lost. GAME OVER." << std::endl;
+    game.getStateMachine().pushState(std::make_unique<GameOverState>(game, 1));
+    // game.quit();
   } else {
     std::cout << "Enemy shattered into entropy!" << std::endl;
 
