@@ -47,6 +47,8 @@ install_manifest.txt
 compile_commands.json
 .ninja_*
 *.ninja
+.cache/
+compile_commands.json
 
 # IDEs and Editors
 .vscode/
