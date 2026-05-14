@@ -17,7 +17,7 @@ find_package(Lua 5.4 EXACT REQUIRED)
 include(FetchContent)
 
 # Fetch EnTT
-FetchContent_Declare(
+FetchContent_Declare( 
     entt
     GIT_REPOSITORY https://github.com/skypjack/entt
     GIT_TAG        v3.13.2 
@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(json)
 FetchContent_Declare(
     sol2
     GIT_REPOSITORY https://github.com/ThePhD/sol2.git
-    GIT_TAG        v3.3.1 
+    GIT_TAG        main 
 )
 FetchContent_MakeAvailable(sol2)
 
