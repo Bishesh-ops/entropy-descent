@@ -11,20 +11,44 @@ main :: proc() {
 		fmt.eprintfln("SDL_Init Error: %s", sdl.GetError())
 		return
 	}
-
 	defer sdl.Quit()
 
 	window := sdl.CreateWindow("Entropy Descent", WINDOW_WIDTH, WINDOW_HEIGHT, {})
-
+	if window == nil {
+		fmt.eprintfln("SDL_CreateWindow Error: %s", sdl.GetError())
+		return
+	}
 	defer sdl.DestroyWindow(window)
 
 	renderer := sdl.CreateRenderer(window, nil)
 	if renderer == nil {
-		fmt.eprintfln("SDL_CreateRender Error %s", sdl.GetError())
+		fmt.eprintfln("SDL_CreateRenderer Error: %s", sdl.GetError())
 		return
 	}
 
 	defer sdl.DestroyRenderer(renderer)
+
+	world := init_world()
+	defer destroy_world(&world)
+
+	player_id := spawn_entity(&world)
+	world.entities[player_id].components += {.Player, .Position, .Render_Color, .Hitbox}
+	world.entities[player_id].pos = {
+		x = 400,
+		y = 300,
+	}
+	world.entities[player_id].color = {
+		r = 0,
+		g = 255,
+		b = 100,
+		a = 255,
+	}
+	world.entities[player_id].hitbox = {
+		width    = 32.0,
+		height   = 32.0,
+		offset_x = 0,
+		offset_y = 0,
+	}
 
 	is_running := true
 	last_time := sdl.GetTicks()
@@ -33,10 +57,7 @@ main :: proc() {
 		current_time := sdl.GetTicks()
 		dt := f32(current_time - last_time) / 1000.0
 		last_time = current_time
-
-		if dt > 0.05 {
-			dt = 0.05
-		}
+		if dt > 0.05 do dt = 0.05
 
 		event: sdl.Event
 		for sdl.PollEvent(&event) {
@@ -49,10 +70,8 @@ main :: proc() {
 				}
 			}
 		}
-		sdl.SetRenderDrawColor(renderer, 3, 21, 31, 255)
-		sdl.RenderClear(renderer)
-		sdl.RenderPresent(renderer)
+		sys_render(&world, renderer)
+		process_destroys(&world)
 	}
-
 }
 
