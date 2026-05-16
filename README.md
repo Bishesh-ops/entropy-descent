@@ -1,50 +1,22 @@
 # Entropy Descent
 
-A systemic, data-driven 2D narrative roguelike built natively in modern C++23. Bypassing commercial game engines, Entropy Descent relies on hardware-level memory manipulation and a highly modular Entity Component System (ECS) to simulate chaotic physics, environmental synergies, and emergent progression.
+## About
+Entropy Descent is a tactical, grid-based roguelike. The game focuses on strategic movement, combat, and narrative progression within a dynamically simulated environment. 
 
-The core philosophy of this project is **Emergent Physics & Progression**. We replace standard hack-and-slash combat with deep systemic interactions, Lua-driven environmental spellcasting, and the overarching "Entropy" mutation system.
+## Architecture: The Odin Pivot
+This project was recently rewritten from the ground up, porting from C++23 to the Odin programming language. The goal of this transformation was to eliminate build friction, drop object-oriented overhead, and fully embrace Data-Oriented Design (DOD).
 
-## 🛠 Tech Stack
-* **Language:** Modern C++ (Targeting C++23 standards for maximum memory safety and performance).
-* **Build System:** CMake
-* **Scripting:** Lua 5.4 bound via `sol2` for data-driven combat and AI logic.
-* **Architecture:** Entity Component System (ECS) powered by `EnTT` (Industry-standard, blazingly fast ECS framework).
-* **Rendering & Core:** `SDL3` (Hardware-accelerated windowing, input, and 2D rendering).
-* **Live Tooling:** Dear ImGui for real-time engine debugging and editing.
+### Key Technical Shifts
+* **Language:** Odin replaced C++.
+* **Custom ECS:** The third-party EnTT library was removed. The engine now uses a custom, from-scratch Entity Component System utilizing Odin's native `#soa` (Structure of Arrays) for cache-friendly memory access.
+* **No Build Systems:** CMake and associated build scripts were removed. The project relies exclusively on the native Odin compiler for instant iteration times.
+* **Flat Architecture:** Logic is strictly separated from data. State is held in plain data structs, manipulated by isolated, procedural systems.
+* **Rendering & Input:** Handled via direct, zero-abstraction calls to Odin's `vendor:sdl3` library.
 
-## Core Features & Systems
-The engine is deeply modular and heavily data-driven, allowing for massive content scaling without recompiling the C++ core:
+## Building and Running
+Ensure you have the Odin compiler and SDL3 installed on your system.
 
-* **Entity Component System (ECS):** Complete separation of data (`Components`) and logic (`Systems`), ensuring cache-friendly performance. Uses `EnTT`'s modern storage iteration for strict memory safety.
-* **Pushdown Automata State Machine:** A robust, stack-based state manager seamlessly transitioning between `MenuState`, `PlayState`, and the pivotal `VowState`.
-* **Hybrid Spatial Architecture:** Blends grid-based logic for FOV and pathfinding with pixel-precise continuous movement and AABB collision resolution for entities and particles.
-* **Lua-Driven Combat & Spells:** The C++ engine acts purely as a dispatcher. Spells and AI are handled via Lua scripts (`scripts/spells.lua`, `scripts/ai.lua`), allowing real-time injection of logic and environmental synergies (e.g., casting fire on a scorched tile).
-* **The Entropy & Vow System:** A unique resource mechanic. High Entropy triggers chaotic cascades in the world state. Reaching 100 Entropy forces the player into `VowState` to accept permanent, run-altering curses/buffs (e.g., sacrificing FOV for massive spell AoE).
-* **Algorithmic World Generation:** Organic cavern networks generated via **Cellular Automata**, smoothed and guaranteed fully interconnected using **Breadth-First Search (BFS)** graph theory.
-* **Data Pipelines:** Python scripts and JSON payloads (`data/enemies.json`, `data/items.json`) pre-validate and build massive amounts of content declaratively.
-
-##  Execution Roadmap
-The engine foundation is laid. Current and future development focuses on building a full execution slice of the game:
-
-- [x] **Tooling & Data Pipeline:** Procedural JSON generation and data validation.
-- [ ] **Live Debug & Editor:** ImGui-powered Entity Inspector, Lua Console, and performance profiling.
-- [ ] **Visual Juice & Polish:** Screen shake, floating combat text, and `SDL_mixer` audio integration.
-- [ ] **MVP Gameplay Loop:** A fully scoped single-floor slice featuring combat, entropy interactions, and basic win/loss conditions.
-- [ ] **Web Build & Deployment:** Emscripten compilation to host the engine natively on the web via WebAssembly.
-
-## 🔧 Build Instructions (Linux)
-Ensure you have **GCC 14+** and **CMake 3.31+** installed. `SDL3` must be available or built from source on your system. 
+To compile and run the game, navigate to the project root and execute:
 
 ```bash
-# Clone the repository
-git clone https://github.com/bishesh-ops/entropy-descent.git
-cd entropy-descent
-
-# Generate build files and compile
-mkdir build && cd build
-cmake ..
-make
-
-# Run the engine
-./Roguelike
-```
+odin run .
