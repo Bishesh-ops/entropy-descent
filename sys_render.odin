@@ -1,30 +1,60 @@
+// sys_render.odin
 package main
 
 import sdl "vendor:sdl3"
 
-sys_render :: proc(world: ^World, renderer: ^sdl.Renderer) {
+sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map) {
+	sdl.SetRenderDrawColor(renderer, 20, 20, 20, 255)
+	sdl.RenderClear(renderer)
 
-	for e in world.entities {
-		if !e.active do continue
-
-		if .Position in e.components && .Render_Color in e.components {
+	for x in 0 ..< MAP_WIDTH {
+		for y in 0 ..< MAP_HEIGHT {
 			rect := sdl.FRect {
-				x = f32(e.pos.x),
-				y = f32(e.pos.y),
-				w = 16.0,
-				h = 16.0,
+				x = f32(x * TILE_SIZE),
+				y = f32(y * TILE_SIZE),
+				w = TILE_SIZE,
+				h = TILE_SIZE,
 			}
+			tile := game_map.tiles[x][y]
 
-			if .Hitbox in e.components {
-				rect.w = e.hitbox.width
-				rect.h = e.hitbox.height
+			switch tile.type {
+			case .Floor:
+				sdl.SetRenderDrawColor(renderer, 40, 40, 40, 255)
+			case .Wall:
+				sdl.SetRenderDrawColor(renderer, 100, 100, 100, 255)
 			}
-
-			sdl.SetRenderDrawColor(renderer, e.color.r, e.color.g, e.color.b, e.color.a)
 			sdl.RenderFillRect(renderer, &rect)
+
+			// Grid overlay
+			sdl.SetRenderDrawColor(renderer, 60, 60, 60, 100)
+			sdl.RenderRect(renderer, &rect)
 		}
 	}
+}
 
-	sdl.RenderPresent(renderer)
+sys_render_entities :: proc(renderer: ^sdl.Renderer, world: ^World) {
+	for &entity in world.entities {
+		if .Render_Color not_in entity.components {
+			continue
+		}
+		if .Pending_Destroy in entity.components {
+			continue
+		}
+
+		rect := sdl.FRect {
+			x = entity.transform.x,
+			y = entity.transform.y,
+			w = entity.hitbox.w,
+			h = entity.hitbox.h,
+		}
+		sdl.SetRenderDrawColor(
+			renderer,
+			entity.render_color.r,
+			entity.render_color.g,
+			entity.render_color.b,
+			entity.render_color.a,
+		)
+		sdl.RenderFillRect(renderer, &rect)
+	}
 }
 

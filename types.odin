@@ -1,35 +1,9 @@
+// types.odin
 package main
 
-import "core:strings"
+import "core:math"
 
-Entity_ID :: int
-
-Component_Type :: enum {
-	Player,
-	Enemy,
-	Collider,
-	Item,
-	Phantom,
-	Pending_Destroy,
-	Stairs,
-
-	// Data Markers
-	Position,
-	Transform,
-	Velocity,
-	Hitbox,
-	Health,
-	Combat_Stats,
-	Render_Color,
-	Item_Effect,
-	Inventory,
-	Entropy_Stats,
-	Projectile,
-	Particle,
-}
-
-Component_Set :: bit_set[Component_Type]
-
+// ----- Basic Components -----
 Position :: struct {
 	x, y: int,
 }
@@ -39,61 +13,72 @@ Transform :: struct {
 }
 
 Velocity :: struct {
-	dx, dy: f32,
-	speed:  f32,
+	x, y: f32,
 }
 
 Hitbox :: struct {
-	width, height:      f32,
-	offset_x, offset_y: f32,
-}
-
-Health :: struct {
-	current, max: int,
-}
-
-Combat_Stats :: struct {
-	attack, defense: int,
+	w, h: f32,
 }
 
 Render_Color :: struct {
 	r, g, b, a: u8,
 }
 
-Item_effect :: struct {
-	effect_type: string,
-	magnitude:   int,
-}
-
-Inventory :: struct {
-	items:        [dynamic]Entity_ID,
-	max_capacity: int,
-}
-
+// ----- Entropy State -----
 Entropy_State :: struct {
 	entropy:          int,
+	max_entropy:      int,
+	tick_rate:        int, // passive entropy +1 every N ticks
 	fov_radius:       int,
 	bonus_aoe:        int,
 	has_passive_aura: bool,
 	health_locked:    bool,
 }
 
-Projectile :: struct {
-	life_time: f32,
-	damage:    int,
-	element:   string,
-	caster:    Entity_ID,
+// ----- Action & Tick System -----
+Action_Type :: enum {
+	None,
+	Move,
+	Melee_Attack,
+	Spell,
+	Wait,
 }
 
-Particle :: struct {
-	life_time: f32,
-	max_life:  f32,
-	vx, vy:    f32,
-	r, g, b:   u8,
+Action :: struct {
+	type:      Action_Type,
+	direction: [2]int, // tile offset (dx, dy)
+	cost:      int, // tick cost
 }
 
-Enemy_Data :: struct {
-	attack_cooldown: f32,
-	aura_tick_timer: f32,
+// ----- Component Tags (bit_set enum) -----
+Component_Type :: enum {
+	Position,
+	Transform,
+	Velocity,
+	Hitbox,
+	Render_Color,
+	Player,
+	Enemy,
+	Pending_Destroy,
 }
+
+Component_Set :: bit_set[Component_Type]
+
+// ----- Entity (Fat Struct) -----
+// Note: #soa is applied to the slice in World, not here.
+Entity :: struct {
+	position:         Position,
+	transform:        Transform,
+	velocity:         Velocity,
+	hitbox:           Hitbox,
+	render_color:     Render_Color,
+	components:       Component_Set,
+
+	// Tick scheduling (used by enemies, but lives here for SOA)
+	speed:            int,
+	next_action_tick: int,
+	tick_threshold:   int,
+}
+
+Entity_ID :: distinct int
 

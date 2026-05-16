@@ -1,110 +1,84 @@
+// main.odin
 package main
 
 import "core:fmt"
 import sdl "vendor:sdl3"
 
-WINDOW_WIDTH :: 800
-WINDOW_HEIGHT :: 600
-
 main :: proc() {
-	if !sdl.Init({.VIDEO, .AUDIO}) {
-		fmt.eprintfln("SDL_Init Error: %s", sdl.GetError())
+	if !sdl.Init(sdl.INIT_VIDEO) {
+		fmt.eprintln("SDL init failed:", sdl.GetError())
 		return
 	}
 	defer sdl.Quit()
 
-	window := sdl.CreateWindow("Entropy Descent", WINDOW_WIDTH, WINDOW_HEIGHT, {})
+	// SDL3 window flags need an explicit value, e.g. sdl.WINDOW_SHOWN
+	window := sdl.CreateWindow("Entropy Descent", 640, 480, sdl.WINDOW_SHOWN)
 	if window == nil {
-		fmt.eprintfln("SDL_CreateWindow Error: %s", sdl.GetError())
+		fmt.eprintln("Window creation failed:", sdl.GetError())
 		return
 	}
 	defer sdl.DestroyWindow(window)
 
 	renderer := sdl.CreateRenderer(window, nil)
 	if renderer == nil {
-		fmt.eprintfln("SDL_CreateRenderer Error: %s", sdl.GetError())
+		fmt.eprintln("Renderer creation failed:", sdl.GetError())
 		return
 	}
-
 	defer sdl.DestroyRenderer(renderer)
-	sdl.SetRenderDrawBlendMode(renderer, sdl.BLENDMODE_BLEND)
 
-	world := init_world()
-	defer destroy_world(&world)
-	game_map := init_map()
+	// ----- Game State Init -----
+	gs: Game_State
+	gs.world.entities = make([dynamic]Entity) // allocate SOA array
+	defer delete(gs.world.entities) // now works because type is known
+	gs.game_map = init_map()
+	gs.floor_depth = 1
+	gs.tick_count = 0
+	gs.entropy = Entropy_State {
+		entropy          = 0,
+		max_entropy      = 100,
+		tick_rate        = 10,
+		fov_radius       = 8,
+		bonus_aoe        = 0,
+		has_passive_aura = false,
+		health_locked    = false,
+	}
+	gs.has_action = false
 
-	player_id := spawn_entity(&world)
-	world.entities[player_id].components += {
-		.Player,
-		.Position,
-		.Velocity,
-		.Transform,
-		.Render_Color,
-		.Hitbox,
-	}
-	world.entities[player_id].transform = {
-		x = 100.0,
-		y = 100.0,
-	}
-	world.entities[player_id].vel = {
-		dx    = 0,
-		dy    = 0,
-		speed = 300.0,
-	}
-	world.entities[player_id].pos = {
-		x = 100,
-		y = 100,
-	}
-	world.entities[player_id].color = {
-		r = 0,
-		g = 255,
-		b = 100,
-		a = 255,
-	}
-	world.entities[player_id].hitbox = {
-		width    = 32.0,
-		height   = 32.0,
-		offset_x = 0,
-		offset_y = 0,
-	}
+	// Spawn player
+	player_id := spawn_entity(&gs.world)
+	player := &gs.world.entities[player_id]
+	player.position = {2, 2}
+	player.transform = {f32(2 * TILE_SIZE), f32(2 * TILE_SIZE)}
+	player.render_color = {0, 255, 0, 255}
+	player.components += {.Position, .Transform, .Render_Color, .Player}
+	gs.player_id = player_id
 
-	is_running := true
-	last_time := sdl.GetTicks()
+	// Spawn test enemy (red)
+	enemy_id := spawn_entity(&gs.world)
+	enemy := &gs.world.entities[enemy_id]
+	enemy.position = {8, 8}
+	enemy.transform = {f32(8 * TILE_SIZE), f32(8 * TILE_SIZE)}
+	enemy.render_color = {255, 0, 0, 255}
+	enemy.components += {.Position, .Transform, .Render_Color, .Enemy}
+	enemy.speed = 100
+	enemy.tick_threshold = int(225.0 / 100.0)
+	enemy.next_action_tick = 0
 
-	for is_running {
-		current_time := sdl.GetTicks()
-		dt := f32(current_time - last_time) / 1000.0
-		last_time = current_time
-		if dt > 0.05 do dt = 0.05
+	// ----- Main Loop -----
+	running := true
+	for running {
+		event_loop(&gs, &running)
 
-		event: sdl.Event
-		for sdl.PollEvent(&event) {
-			#partial switch event.type {
-			case .QUIT:
-				is_running = false
-			case .KEY_DOWN:
-				if event.key.key == sdl.K_ESCAPE {
-					is_running = false
-				}
-			}
+		if gs.has_action {
+			sys_tick(&gs)
+			gs.has_action = false
 		}
 
+		sys_render_map(renderer, &gs.game_map)
+		sys_render_entities(renderer, &gs.world)
+		sdl.RenderPresent(renderer)
 
-		// --- SYSTEMS PIPELINE ---
-
-		sys_input(&world)
-		sys_movement(&world, &game_map, dt)
-
-		// 1. WIPE THE SLATE CLEAN (This fixes the trailing!)
-		sdl.SetRenderDrawColor(renderer, 20, 20, 25, 255)
-		sdl.RenderClear(renderer)
-
-		// 2. Render Map layer
-		sys_render_map(&game_map, renderer)
-
-		// 3. Render Entity layer
-		sys_render(&world, renderer)
-
-		process_destroys(&world)}
+		sdl.Delay(16)
+	}
 }
 
