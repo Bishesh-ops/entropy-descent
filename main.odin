@@ -27,9 +27,11 @@ main :: proc() {
 	}
 
 	defer sdl.DestroyRenderer(renderer)
+	sdl.SetRenderDrawBlendMode(renderer, sdl.BLENDMODE_BLEND)
 
 	world := init_world()
 	defer destroy_world(&world)
+	game_map := init_map()
 
 	player_id := spawn_entity(&world)
 	world.entities[player_id].components += {
@@ -41,8 +43,8 @@ main :: proc() {
 		.Hitbox,
 	}
 	world.entities[player_id].transform = {
-		x = 400.0,
-		y = 300.0,
+		x = 100.0,
+		y = 100.0,
 	}
 	world.entities[player_id].vel = {
 		dx    = 0,
@@ -50,8 +52,8 @@ main :: proc() {
 		speed = 300.0,
 	}
 	world.entities[player_id].pos = {
-		x = 400,
-		y = 300,
+		x = 100,
+		y = 100,
 	}
 	world.entities[player_id].color = {
 		r = 0,
@@ -86,10 +88,23 @@ main :: proc() {
 				}
 			}
 		}
+
+
+		// --- SYSTEMS PIPELINE ---
+
 		sys_input(&world)
-		sys_movement(&world, dt)
+		sys_movement(&world, &game_map, dt)
+
+		// 1. WIPE THE SLATE CLEAN (This fixes the trailing!)
+		sdl.SetRenderDrawColor(renderer, 20, 20, 25, 255)
+		sdl.RenderClear(renderer)
+
+		// 2. Render Map layer
+		sys_render_map(&game_map, renderer)
+
+		// 3. Render Entity layer
 		sys_render(&world, renderer)
-		process_destroys(&world)
-	}
+
+		process_destroys(&world)}
 }
 

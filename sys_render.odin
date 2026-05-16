@@ -3,8 +3,6 @@ package main
 import sdl "vendor:sdl3"
 
 sys_render :: proc(world: ^World, renderer: ^sdl.Renderer) {
-	sdl.SetRenderDrawColor(renderer, 3, 21, 31, 255)
-	sdl.RenderClear(renderer)
 
 	for e in world.entities {
 		if !e.active do continue
