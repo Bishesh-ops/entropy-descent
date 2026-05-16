@@ -32,7 +32,23 @@ main :: proc() {
 	defer destroy_world(&world)
 
 	player_id := spawn_entity(&world)
-	world.entities[player_id].components += {.Player, .Position, .Render_Color, .Hitbox}
+	world.entities[player_id].components += {
+		.Player,
+		.Position,
+		.Velocity,
+		.Transform,
+		.Render_Color,
+		.Hitbox,
+	}
+	world.entities[player_id].transform = {
+		x = 400.0,
+		y = 300.0,
+	}
+	world.entities[player_id].vel = {
+		dx    = 0,
+		dy    = 0,
+		speed = 300.0,
+	}
 	world.entities[player_id].pos = {
 		x = 400,
 		y = 300,
@@ -70,6 +86,8 @@ main :: proc() {
 				}
 			}
 		}
+		sys_input(&world)
+		sys_movement(&world, dt)
 		sys_render(&world, renderer)
 		process_destroys(&world)
 	}
