@@ -1,9 +1,5 @@
-// types.odin
 package main
 
-import "core:math"
-
-// ----- Basic Components -----
 Position :: struct {
 	x, y: int,
 }
@@ -24,18 +20,16 @@ Render_Color :: struct {
 	r, g, b, a: u8,
 }
 
-// ----- Entropy State -----
 Entropy_State :: struct {
 	entropy:          int,
 	max_entropy:      int,
-	tick_rate:        int, // passive entropy +1 every N ticks
+	tick_rate:        int,
 	fov_radius:       int,
 	bonus_aoe:        int,
 	has_passive_aura: bool,
 	health_locked:    bool,
 }
 
-// ----- Action & Tick System -----
 Action_Type :: enum {
 	None,
 	Move,
@@ -46,11 +40,10 @@ Action_Type :: enum {
 
 Action :: struct {
 	type:      Action_Type,
-	direction: [2]int, // tile offset (dx, dy)
-	cost:      int, // tick cost
+	direction: [2]int,
+	cost:      int,
 }
 
-// ----- Component Tags (bit_set enum) -----
 Component_Type :: enum {
 	Position,
 	Transform,
@@ -64,21 +57,29 @@ Component_Type :: enum {
 
 Component_Set :: bit_set[Component_Type]
 
-// ----- Entity (Fat Struct) -----
-// Note: #soa is applied to the slice in World, not here.
 Entity :: struct {
+	active:           bool,
 	position:         Position,
 	transform:        Transform,
 	velocity:         Velocity,
 	hitbox:           Hitbox,
 	render_color:     Render_Color,
 	components:       Component_Set,
-
-	// Tick scheduling (used by enemies, but lives here for SOA)
 	speed:            int,
 	next_action_tick: int,
 	tick_threshold:   int,
 }
 
 Entity_ID :: distinct int
+
+Game_State :: struct {
+	world:         World,
+	game_map:      Map,
+	floor_depth:   int,
+	tick_count:    int,
+	entropy:       Entropy_State,
+	player_id:     Entity_ID,
+	player_action: Action,
+	has_action:    bool,
+}
 
