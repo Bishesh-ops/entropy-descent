@@ -44,6 +44,11 @@ Velocity :: struct {
 }
 
 Hitbox :: struct {
+	width, height:      f32,
+	offset_x, offset_y: f32,
+}
+
+Health :: struct {
 	current, max: int,
 }
 
