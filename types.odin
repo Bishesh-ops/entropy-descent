@@ -38,6 +38,19 @@ Action_Type :: enum {
 	Wait,
 }
 
+Particle :: struct {
+	x, y:     f32,
+	dx, dy:   f32,
+	life:     f32,
+	max_life: f32,
+	color:    Render_Color,
+	size:     f32,
+}
+
+Particle_System :: struct {
+	particles: [dynamic]Particle,
+}
+
 Action :: struct {
 	type:      Action_Type,
 	direction: [2]int,
@@ -81,5 +94,6 @@ Game_State :: struct {
 	player_id:     Entity_ID,
 	player_action: Action,
 	has_action:    bool,
+	particle_sys:  Particle_System,
 }
 

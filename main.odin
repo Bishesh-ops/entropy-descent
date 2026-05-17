@@ -30,9 +30,10 @@ main :: proc() {
 	sdl.SetRenderLogicalPresentation(renderer, GAME_W, GAME_H, .LETTERBOX)
 
 	gs: Game_State
-	gs.world.entities = make([dynamic]Entity)
+	gs.world.entities = make(#soa[dynamic]Entity)
 	defer delete(gs.world.entities)
-
+	gs.particle_sys.particles = make([dynamic]Particle)
+	defer delete(gs.particle_sys.particles)
 	gs.game_map = init_map()
 	gs.floor_depth = 1
 	gs.tick_count = 0
@@ -73,13 +74,18 @@ main :: proc() {
 			gs.has_action = false
 		}
 
+		// Update particles EVERY frame, not just on ticks
+		sys_update_particles(&gs, 0.016) // 16ms delta time
+
 		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 		sdl.RenderClear(renderer)
+
 		sys_render_map(renderer, &gs.game_map)
 		sys_render_entities(renderer, &gs.world)
+		sys_render_particles(renderer, &gs) // Render particles on top
+
 		sdl.RenderPresent(renderer)
 
 		sdl.Delay(16)
-	}
-}
+	}}
 

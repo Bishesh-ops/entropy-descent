@@ -1,33 +1,27 @@
 package main
 
 World :: struct {
-	entities: [dynamic]Entity,
+	entities: #soa[dynamic]Entity,
 }
 
 spawn_entity :: proc(world: ^World) -> Entity_ID {
-	for &e, id in world.entities {
-		if !e.active {
-			e = Entity {
+	for i in 0 ..< len(world.entities) {
+		if !world.entities[i].active {
+			world.entities[i] = Entity {
 				active = true,
-				hitbox = {16, 16},
+				hitbox = {16, 26},
 			}
-			return Entity_ID(id)
+			return Entity_ID(i)
 		}
 	}
 	append(&world.entities, Entity{active = true, hitbox = {16, 16}})
 	return Entity_ID(len(world.entities) - 1)
 }
 
-destroy_entity :: proc(world: ^World, id: Entity_ID) {
-	if int(id) >= 0 && int(id) < len(world.entities) {
-		world.entities[id].components += {.Pending_Destroy}
-	}
-}
-
 process_destroys :: proc(world: ^World) {
-	for &e in world.entities {
-		if .Pending_Destroy in e.components {
-			e = Entity{} // resets active to false — slot is reclaimable
+	for i in 0 ..< len(world.entities) {
+		if .Pending_Destroy in world.entities[i].components {
+			world.entities[i] = Entity{}
 		}
 	}
 }
