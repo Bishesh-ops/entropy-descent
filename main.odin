@@ -3,6 +3,9 @@ package main
 import "core:fmt"
 import sdl "vendor:sdl3"
 
+GAME_W :: MAP_WIDTH * TILE_SIZE
+GAME_H :: MAP_HEIGHT * TILE_SIZE
+
 main :: proc() {
 	if !sdl.Init({.VIDEO}) {
 		fmt.eprintln("SDL init failed:", sdl.GetError())
@@ -10,7 +13,7 @@ main :: proc() {
 	}
 	defer sdl.Quit()
 
-	window := sdl.CreateWindow("Entropy Descent", 640, 480, {})
+	window := sdl.CreateWindow("Entropy Descent", 0, 0, {.FULLSCREEN})
 	if window == nil {
 		fmt.eprintln("Window creation failed:", sdl.GetError())
 		return
@@ -23,6 +26,8 @@ main :: proc() {
 		return
 	}
 	defer sdl.DestroyRenderer(renderer)
+
+	sdl.SetRenderLogicalPresentation(renderer, GAME_W, GAME_H, .LETTERBOX)
 
 	gs: Game_State
 	gs.world.entities = make([dynamic]Entity)
@@ -68,6 +73,8 @@ main :: proc() {
 			gs.has_action = false
 		}
 
+		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
+		sdl.RenderClear(renderer)
 		sys_render_map(renderer, &gs.game_map)
 		sys_render_entities(renderer, &gs.world)
 		sdl.RenderPresent(renderer)
