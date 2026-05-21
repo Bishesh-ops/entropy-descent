@@ -44,8 +44,8 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 				255,
 			)
 			sdl.RenderFillRect(renderer, &rect)
-			grid_alpha := u8(16) if tile.visible else u8(5)
-			sdl.SetRenderDrawColor(renderer, 60, 60, 60, grid_alpha)
+			grid_alpha := u8(4) if tile.visible else u8(0)
+			sdl.SetRenderDrawColor(renderer, 0, 0, 0, grid_alpha)
 			sdl.RenderRect(renderer, &rect)
 		}
 	}

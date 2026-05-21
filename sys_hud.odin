@@ -28,6 +28,8 @@ sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 
 		pct := f32(player.health) / f32(player.max_health)
 		if pct < 0 do pct = 0
+		if pct > 1 do pct = 1
+
 		gr := u8(pct * 90)
 		sdl.SetRenderDrawColor(renderer, 210, gr, 30, 255)
 		fill := sdl.FRect{bx, bar_y, bw * pct, bar_h}
@@ -51,6 +53,9 @@ sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 		sdl.RenderFillRect(renderer, &bg)
 
 		pct := f32(gs.entropy.entropy) / f32(gs.entropy.max_entropy)
+		if pct < 0 do pct = 0
+		if pct > 1 do pct = 1
+
 		er := u8(140 + pct * 80)
 		eb := u8(220 - pct * 60)
 		sdl.SetRenderDrawColor(renderer, er, 0, eb, 255)
