@@ -29,26 +29,36 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 	}
 }
 
-sys_render_entities :: proc(renderer: ^sdl.Renderer, world: ^World, cam: Camera) {
+sys_render_entities :: proc(renderer: ^sdl.Renderer, world: ^World, cam: Camera, gs: ^Game_State) {
 	for &entity in world.entities {
 		if !entity.active do continue
 		if .Render_Color not_in entity.components do continue
 		if .Pending_Destroy in entity.components do continue
 
-		rect := sdl.FRect {
-			x = entity.transform.x - cam.x,
-			y = entity.transform.y - cam.y,
-			w = entity.hitbox.w,
-			h = entity.hitbox.h,
+		if .Player in entity.components && gs.player_texture != nil {
+			dst := sdl.FRect {
+				x = entity.transform.x - cam.x,
+				y = entity.transform.y - cam.y,
+				w = 32,
+				h = 32,
+			}
+			sdl.RenderTexture(renderer, gs.player_texture, nil, &dst)
+		} else {
+			rect := sdl.FRect {
+				x = entity.transform.x - cam.x,
+				y = entity.transform.y - cam.y,
+				w = entity.hitbox.w,
+				h = entity.hitbox.h,
+			}
+			sdl.SetRenderDrawColor(
+				renderer,
+				entity.render_color.r,
+				entity.render_color.g,
+				entity.render_color.b,
+				entity.render_color.a,
+			)
+			sdl.RenderFillRect(renderer, &rect)
 		}
-		sdl.SetRenderDrawColor(
-			renderer,
-			entity.render_color.r,
-			entity.render_color.g,
-			entity.render_color.b,
-			entity.render_color.a,
-		)
-		sdl.RenderFillRect(renderer, &rect)
 	}
 }
 

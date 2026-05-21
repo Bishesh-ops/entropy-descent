@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:math"
 import sdl "vendor:sdl3"
+import sdl_image "vendor:sdl3/image"
 
 GAME_W :: 1280
 GAME_H :: 720
@@ -32,8 +33,13 @@ main :: proc() {
 	defer sdl.DestroyRenderer(renderer)
 
 	sdl.SetRenderLogicalPresentation(renderer, CAMERA_VIEW_W, CAMERA_VIEW_H, .LETTERBOX)
-
 	gs: Game_State
+
+	gs.player_texture = sdl_image.LoadTexture(renderer, "assets/player/Player.png")
+	if gs.player_texture == nil {
+		fmt.eprintln("Failed to load player texture:", sdl.GetError())
+	}
+
 	gs.world.entities = make(#soa[dynamic]Entity)
 	defer delete(gs.world.entities)
 	gs.particle_sys.particles = make([dynamic]Particle)
@@ -119,7 +125,7 @@ main :: proc() {
 		sdl.RenderClear(renderer)
 
 		sys_render_map(renderer, &gs.game_map, gs.camera)
-		sys_render_entities(renderer, &gs.world, gs.camera)
+		sys_render_entities(renderer, &gs.world, gs.camera, &gs)
 		sys_render_particles(renderer, &gs)
 
 		sdl.RenderPresent(renderer)

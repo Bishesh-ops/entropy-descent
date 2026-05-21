@@ -1,4 +1,5 @@
 package main
+import sdl "vendor:sdl3"
 
 Position :: struct {
 	x, y: int,
@@ -90,15 +91,16 @@ Entity :: struct {
 Entity_ID :: distinct int
 
 Game_State :: struct {
-	world:         World,
-	game_map:      Map,
-	floor_depth:   int,
-	tick_count:    int,
-	entropy:       Entropy_State,
-	player_id:     Entity_ID,
-	player_action: Action,
-	has_action:    bool,
-	particle_sys:  Particle_System,
-	camera:        Camera,
+	world:          World,
+	game_map:       Map,
+	floor_depth:    int,
+	tick_count:     int,
+	entropy:        Entropy_State,
+	player_id:      Entity_ID,
+	player_action:  Action,
+	has_action:     bool,
+	particle_sys:   Particle_System,
+	camera:         Camera,
+	player_texture: ^sdl.Texture,
 }
 
