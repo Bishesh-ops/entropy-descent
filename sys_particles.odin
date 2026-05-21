@@ -68,8 +68,8 @@ sys_render_particles :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 		sdl.SetRenderDrawColor(renderer, p.color.r, p.color.g, p.color.b, alpha)
 
 		rect := sdl.FRect {
-			x = p.x - (p.size / 2.0),
-			y = p.y - (p.size / 2.0),
+			x = p.x - gs.camera.x - (p.size / 2.0),
+			y = p.y - gs.camera.y - (p.size / 2.0),
 			w = p.size,
 			h = p.size,
 		}

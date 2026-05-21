@@ -57,6 +57,10 @@ Action :: struct {
 	cost:      int,
 }
 
+Camera :: struct {
+	x, y: f32,
+}
+
 Component_Type :: enum {
 	Position,
 	Transform,
@@ -95,5 +99,6 @@ Game_State :: struct {
 	player_action: Action,
 	has_action:    bool,
 	particle_sys:  Particle_System,
+	camera:        Camera,
 }
 
