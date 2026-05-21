@@ -93,12 +93,15 @@ main :: proc() {
 		y = f32(player_spawn.y * TILE_SIZE) - f32(CAMERA_VIEW_H) / 2,
 	}
 
+	sys_update_fov(&gs)
+
 	running := true
 	for running {
 		event_loop(&gs, &running)
 
 		if gs.has_action {
 			sys_tick(&gs)
+			sys_update_fov(&gs)
 			gs.has_action = false
 		}
 

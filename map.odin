@@ -22,6 +22,8 @@ Tile :: struct {
 	type:       Tile_Type,
 	state:      Tile_State,
 	state_life: int,
+	visible:    bool,
+	explored:   bool,
 }
 
 Map :: struct {
