@@ -1,4 +1,6 @@
 package main
+
+import lua "vendor:lua/5.4"
 import sdl "vendor:sdl3"
 
 Position :: struct {
@@ -103,5 +105,6 @@ Game_State :: struct {
 	game_over:      bool,
 	flash:          Flash,
 	screen_shake:   f32,
+	lua_state:      ^lua.State,
 }
 

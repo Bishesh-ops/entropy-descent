@@ -11,6 +11,7 @@ event_loop :: proc(gs: ^Game_State, running: ^bool) {
 		case .KEY_DOWN:
 			handle_key_down(gs, ev.key, running)
 		}
+
 	}
 }
 
@@ -51,6 +52,26 @@ handle_key_down :: proc(gs: ^Game_State, key: sdl.KeyboardEvent, running: ^bool)
 		dir = gs.world.entities[gs.player_id].facing
 	case .ESCAPE:
 		running^ = false
+	case .Q:
+		action_type = .Wait
+		cost = 10
+
+		tx := gs.world.entities[gs.player_id].position.x + gs.world.entities[gs.player_id].facing.x
+		ty := gs.world.entities[gs.player_id].position.y + gs.world.entities[gs.player_id].facing.y
+
+		cast_spell(gs, "scorch_earth", int(gs.player_id), tx, ty)
+	case .F:
+		action_type = .Wait
+		cost = 15
+
+		tx :=
+			gs.world.entities[gs.player_id].position.x +
+			(gs.world.entities[gs.player_id].facing.x * 3)
+		ty :=
+			gs.world.entities[gs.player_id].position.y +
+			(gs.world.entities[gs.player_id].facing.y * 3)
+
+		cast_spell(gs, "void_step", int(gs.player_id), tx, ty)
 	}
 
 	if action_type != .None {

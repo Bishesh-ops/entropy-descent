@@ -7,10 +7,10 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 
 	end_x := min(MAP_WIDTH, int(cam.x + f32(CAMERA_VIEW_W)) / TILE_SIZE + 2)
 	end_y := min(MAP_HEIGHT, int(cam.y + f32(CAMERA_VIEW_H)) / TILE_SIZE + 2)
-
 	for x in start_x ..< end_x {
 		for y in start_y ..< end_y {
 			tile := game_map.tiles[x][y]
+
 			if !tile.explored do continue
 
 			rect := sdl.FRect {
@@ -28,7 +28,15 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 			case .Wall:
 				base_r, base_g, base_b = 70, 75, 85
 			}
-
+			if tile.state == .Scorched {
+				base_r = 120
+				base_g = 50
+				base_b = 30
+			} else if tile.state == .Frozen {
+				base_r = 40
+				base_g = 80
+				base_b = 140
+			}
 			noise := int(tile.color_val)
 			r := clamp(base_r + noise, 0, 255)
 			g := clamp(base_g + noise, 0, 255)

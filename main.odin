@@ -206,6 +206,7 @@ init_game_state :: proc(gs: ^Game_State) {
 		has_passive_aura = false,
 		health_locked    = false,
 	}
+	init_lua(gs)
 	spawn_all_entities(gs)
 }
 
