@@ -4,31 +4,22 @@ import sdl "vendor:sdl3"
 Position :: struct {
 	x, y: int,
 }
-
 Transform :: struct {
 	x, y: f32,
 }
-
 Velocity :: struct {
 	x, y: f32,
 }
-
 Hitbox :: struct {
 	w, h: f32,
 }
-
 Render_Color :: struct {
 	r, g, b, a: u8,
 }
 
 Entropy_State :: struct {
-	entropy:          int,
-	max_entropy:      int,
-	tick_rate:        int,
-	fov_radius:       int,
-	bonus_aoe:        int,
-	has_passive_aura: bool,
-	health_locked:    bool,
+	entropy, max_entropy, tick_rate, fov_radius, bonus_aoe: int,
+	has_passive_aura, health_locked:                        bool,
 }
 
 Action_Type :: enum {
@@ -40,12 +31,8 @@ Action_Type :: enum {
 }
 
 Particle :: struct {
-	x, y:     f32,
-	dx, dy:   f32,
-	life:     f32,
-	max_life: f32,
-	color:    Render_Color,
-	size:     f32,
+	x, y, dx, dy, life, max_life, size: f32,
+	color:                              Render_Color,
 }
 
 Particle_System :: struct {
@@ -62,6 +49,11 @@ Camera :: struct {
 	x, y: f32,
 }
 
+Flash :: struct {
+	timer:   f32,
+	r, g, b: u8,
+}
+
 Component_Type :: enum {
 	Position,
 	Transform,
@@ -71,6 +63,8 @@ Component_Type :: enum {
 	Player,
 	Enemy,
 	Pending_Destroy,
+	Health,
+	Combat,
 }
 
 Component_Set :: bit_set[Component_Type]
@@ -86,6 +80,10 @@ Entity :: struct {
 	speed:            int,
 	next_action_tick: int,
 	tick_threshold:   int,
+	health:           int,
+	max_health:       int,
+	attack:           int,
+	facing:           [2]int,
 }
 
 Entity_ID :: distinct int
@@ -102,5 +100,7 @@ Game_State :: struct {
 	particle_sys:   Particle_System,
 	camera:         Camera,
 	player_texture: ^sdl.Texture,
+	game_over:      bool,
+	flash:          Flash,
 }
 
