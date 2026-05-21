@@ -2,27 +2,40 @@ package main
 
 sys_tick :: proc(gs: ^Game_State) {
 	action := gs.player_action
-
 	gs.tick_count += action.cost
 
 	switch action.type {
 	case .Move:
-		try_move(gs, gs.player_id, action.direction.x, action.direction.y)
-	case .Melee_Attack:
 		target_x := gs.world.entities[gs.player_id].position.x + action.direction.x
 		target_y := gs.world.entities[gs.player_id].position.y + action.direction.y
 
+		// STEP 1: Check if we bumped into an enemy
+		bumped_id := -1
 		for id in 0 ..< len(gs.world.entities) {
 			if !gs.world.entities[id].active do continue
 			if .Enemy not_in gs.world.entities[id].components do continue
-
 			if gs.world.entities[id].position.x == target_x &&
 			   gs.world.entities[id].position.y == target_y {
-				gs.world.entities[id].components += {.Pending_Destroy}
-				spawn_particle_burst(gs, target_x, target_y, {255, 100, 100, 255}, 20)
+				bumped_id = id
 				break
 			}
 		}
+
+		if bumped_id != -1 {
+			damage := gs.world.entities[gs.player_id].attack
+			gs.world.entities[bumped_id].health -= damage
+
+			gs.screen_shake = 0.15 // Add 150ms of screen shake
+			spawn_particle_burst(gs, target_x, target_y, {255, 255, 200, 255}, 10) // Impact sparks
+
+			if gs.world.entities[bumped_id].health <= 0 {
+				gs.world.entities[bumped_id].components += {.Pending_Destroy}
+				spawn_particle_burst(gs, target_x, target_y, {200, 40, 40, 255}, 25) // Blood burst
+			}
+		} else {
+			try_move(gs, gs.player_id, action.direction.x, action.direction.y)
+		}
+	case .Melee_Attack:
 	case .Spell:
 	case .Wait:
 	case .None:
@@ -66,6 +79,20 @@ enemy_take_turn :: proc(gs: ^Game_State, enemy_id: Entity_ID) {
 	dx := player_x - enemy_x
 	dy := player_y - enemy_y
 	if abs(dx) + abs(dy) == 1 {
+		damage := gs.world.entities[enemy_id].attack
+		gs.world.entities[gs.player_id].health -= damage
+
+		gs.screen_shake = 0.25
+		gs.flash = {
+			timer = 0.15,
+			r     = 255,
+			g     = 0,
+			b     = 0,
+		}
+
+		if gs.world.entities[gs.player_id].health <= 0 {
+			gs.game_over = true
+		}
 		return
 	}
 

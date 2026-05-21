@@ -137,6 +137,7 @@ main :: proc() {
 
 		if gs.has_action && !gs.game_over {
 			sys_tick(&gs)
+			process_destroys(&gs.world)
 			sys_update_fov(&gs)
 			gs.has_action = false
 		}
@@ -160,8 +161,28 @@ main :: proc() {
 		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 		sdl.RenderClear(renderer)
 
-		sys_render_map(renderer, &gs.game_map, gs.camera)
-		sys_render_entities(renderer, &gs.world, gs.camera, &gs)
+
+		shake_offset_x: f32 = 0
+		shake_offset_y: f32 = 0
+		if gs.screen_shake > 0 {
+			gs.screen_shake -= 0.016
+			if gs.screen_shake < 0 do gs.screen_shake = 0
+
+			intensity := gs.screen_shake * 30.0
+			shake_offset_x = (rand.float32() - 0.5) * intensity
+			shake_offset_y = (rand.float32() - 0.5) * intensity
+		}
+
+		render_cam := gs.camera
+		render_cam.x += shake_offset_x
+		render_cam.y += shake_offset_y
+
+		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
+		sdl.RenderClear(renderer)
+
+		sys_render_map(renderer, &gs.game_map, render_cam)
+		sys_render_entities(renderer, &gs.world, render_cam, &gs)
+
 		sys_render_particles(renderer, &gs)
 		sys_render_hud(renderer, &gs)
 

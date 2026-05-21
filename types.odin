@@ -102,5 +102,6 @@ Game_State :: struct {
 	player_texture: ^sdl.Texture,
 	game_over:      bool,
 	flash:          Flash,
+	screen_shake:   f32,
 }
 

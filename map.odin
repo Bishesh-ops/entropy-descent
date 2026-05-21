@@ -5,7 +5,7 @@ import "core:math/rand"
 TILE_SIZE :: 16
 MAP_WIDTH :: 80
 MAP_HEIGHT :: 60
-WALL_FILL_PERCENT :: 52 // sweet spot: cave-dominant but still navigable
+WALL_FILL_PERCENT :: 54 // sweet spot: cave-dominant but still navigable
 
 Tile_Type :: enum {
 	Floor,
@@ -24,6 +24,7 @@ Tile :: struct {
 	state_life: int,
 	visible:    bool,
 	explored:   bool,
+	color_val:  i8,
 }
 
 Map :: struct {
@@ -43,14 +44,13 @@ init_map :: proc(seed: u64 = 0) -> Map {
 			} else {
 				m.tiles[x][y].type = .Wall if rand.int_max(100) < WALL_FILL_PERCENT else .Floor
 			}
+			m.tiles[x][y].color_val = i8(rand.int_max(21) - 10)
 		}
 	}
 
-	// First 4 passes: standard smoothing (forms the cave shapes)
 	for _ in 0 ..< 4 {
 		m = smooth_pass(&m, 4)
 	}
-	// Last 3 passes: stricter threshold (fills in thin noise, widens passages)
 	for _ in 0 ..< 3 {
 		m = smooth_pass(&m, 3)
 	}

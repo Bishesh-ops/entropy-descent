@@ -2,11 +2,9 @@ package main
 import sdl "vendor:sdl3"
 
 sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
-	// Optimization: Mathematically clamp the loop to only the visible grid
 	start_x := max(0, int(cam.x) / TILE_SIZE)
 	start_y := max(0, int(cam.y) / TILE_SIZE)
 
-	// Add +2 to ensure smooth scrolling edges
 	end_x := min(MAP_WIDTH, int(cam.x + f32(CAMERA_VIEW_W)) / TILE_SIZE + 2)
 	end_y := min(MAP_HEIGHT, int(cam.y + f32(CAMERA_VIEW_H)) / TILE_SIZE + 2)
 
@@ -23,25 +21,29 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 			}
 
 
-			base_r, base_g, base_b: u8
+			base_r, base_g, base_b: int
 			switch tile.type {
 			case .Floor:
-				base_r, base_g, base_b = 40, 40, 45
+				base_r, base_g, base_b = 35, 30, 30
 			case .Wall:
-				base_r, base_g, base_b = 95, 95, 105
+				base_r, base_g, base_b = 70, 75, 85
 			}
+
+			noise := int(tile.color_val)
+			r := clamp(base_r + noise, 0, 255)
+			g := clamp(base_g + noise, 0, 255)
+			b := clamp(base_b + noise, 0, 255)
 
 			factor: f32 = 1.0 if tile.visible else 0.25
 
 			sdl.SetRenderDrawColor(
 				renderer,
-				u8(f32(base_r) * factor),
-				u8(f32(base_g) * factor),
-				u8(f32(base_b) * factor),
+				u8(f32(r) * factor),
+				u8(f32(g) * factor),
+				u8(f32(b) * factor),
 				255,
 			)
 			sdl.RenderFillRect(renderer, &rect)
-
 			grid_alpha := u8(16) if tile.visible else u8(5)
 			sdl.SetRenderDrawColor(renderer, 60, 60, 60, grid_alpha)
 			sdl.RenderRect(renderer, &rect)
@@ -59,13 +61,14 @@ sys_render_entities :: proc(renderer: ^sdl.Renderer, world: ^World, cam: Camera,
 			if !gs.game_map.tiles[entity.position.x][entity.position.y].visible do continue
 		}
 
+
 		sx := entity.transform.x - cam.x
 		sy := entity.transform.y - cam.y
 
 		if .Player in entity.components && gs.player_texture != nil {
 			dst := sdl.FRect {
-				x = sx,
-				y = sy,
+				x = sx - 8,
+				y = sy - 16,
 				w = 32,
 				h = 32,
 			}
@@ -75,7 +78,7 @@ sys_render_entities :: proc(renderer: ^sdl.Renderer, world: ^World, cam: Camera,
 			facing := entity.facing
 			dot := sdl.FRect {
 				x = sx + f32(TILE_SIZE) / 2 + f32(facing.x) * 10 - 1,
-				y = sy + f32(TILE_SIZE) / 2 + f32(facing.y) * 10 - 1,
+				y = (sy - 8) + f32(TILE_SIZE) / 2 + f32(facing.y) * 10 - 1,
 				w = 2,
 				h = 2,
 			}
