@@ -2,8 +2,16 @@ package main
 import sdl "vendor:sdl3"
 
 sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
-	for x in 0 ..< MAP_WIDTH {
-		for y in 0 ..< MAP_HEIGHT {
+	// Optimization: Mathematically clamp the loop to only the visible grid
+	start_x := max(0, int(cam.x) / TILE_SIZE)
+	start_y := max(0, int(cam.y) / TILE_SIZE)
+
+	// Add +2 to ensure smooth scrolling edges
+	end_x := min(MAP_WIDTH, int(cam.x + f32(CAMERA_VIEW_W)) / TILE_SIZE + 2)
+	end_y := min(MAP_HEIGHT, int(cam.y + f32(CAMERA_VIEW_H)) / TILE_SIZE + 2)
+
+	for x in start_x ..< end_x {
+		for y in start_y ..< end_y {
 			tile := game_map.tiles[x][y]
 			if !tile.explored do continue
 
@@ -14,8 +22,6 @@ sys_render_map :: proc(renderer: ^sdl.Renderer, game_map: ^Map, cam: Camera) {
 				h = f32(TILE_SIZE),
 			}
 
-			if rect.x > f32(CAMERA_VIEW_W) || rect.y > f32(CAMERA_VIEW_H) do continue
-			if rect.x + rect.w < 0 || rect.y + rect.h < 0 do continue
 
 			base_r, base_g, base_b: u8
 			switch tile.type {

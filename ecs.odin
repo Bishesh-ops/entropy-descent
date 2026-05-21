@@ -9,19 +9,19 @@ spawn_entity :: proc(world: ^World) -> Entity_ID {
 		if !world.entities[i].active {
 			world.entities[i] = Entity {
 				active = true,
-				hitbox = {16, 26},
 			}
 			return Entity_ID(i)
 		}
 	}
-	append(&world.entities, Entity{active = true, hitbox = {16, 16}})
+
+	append(&world.entities, Entity{active = true})
 	return Entity_ID(len(world.entities) - 1)
 }
 
 process_destroys :: proc(world: ^World) {
 	for i in 0 ..< len(world.entities) {
 		if .Pending_Destroy in world.entities[i].components {
-			world.entities[i] = Entity{}
+			world.entities[i] = Entity{} // Zero-value struct automatically sets active = false
 		}
 	}
 }

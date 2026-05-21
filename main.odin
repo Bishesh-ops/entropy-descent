@@ -123,8 +123,16 @@ main :: proc() {
 	init_game_state(&gs)
 	sys_update_fov(&gs)
 
+	last_tick := sdl.GetTicks()
+
 	running := true
 	for running {
+		current_tick := sdl.GetTicks()
+		dt := f32(current_tick - last_tick) / 1000.0
+		last_tick = current_tick
+
+		if dt > 0.05 do dt = 0.05
+
 		event_loop(&gs, &running)
 
 		if gs.has_action && !gs.game_over {
@@ -133,22 +141,21 @@ main :: proc() {
 			gs.has_action = false
 		}
 
-		// Flash decay every frame
 		if gs.flash.timer > 0 {
-			gs.flash.timer -= 0.016
+			gs.flash.timer -= dt
 			if gs.flash.timer < 0 do gs.flash.timer = 0
 		}
 
-		// Camera lerp
 		px := gs.world.entities[gs.player_id].transform.x
 		py := gs.world.entities[gs.player_id].transform.y
 
 		tx := clamp(px - f32(CAMERA_VIEW_W) / 2, 0, f32(MAP_WIDTH * TILE_SIZE - CAMERA_VIEW_W))
 		ty := clamp(py - f32(CAMERA_VIEW_H) / 2, 0, f32(MAP_HEIGHT * TILE_SIZE - CAMERA_VIEW_H))
-		gs.camera.x += (tx - gs.camera.x) * 0.15
-		gs.camera.y += (ty - gs.camera.y) * 0.15
 
-		sys_update_particles(&gs, 0.016)
+		gs.camera.x += (tx - gs.camera.x) * 9.0 * dt
+		gs.camera.y += (ty - gs.camera.y) * 9.0 * dt
+
+		sys_update_particles(&gs, dt)
 
 		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 		sdl.RenderClear(renderer)
@@ -162,7 +169,6 @@ main :: proc() {
 		sdl.Delay(16)
 	}
 }
-
 init_game_state :: proc(gs: ^Game_State) {
 	gs.floor_depth = 1
 	gs.game_map = init_map(u64(gs.floor_depth))
