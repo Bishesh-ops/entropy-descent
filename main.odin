@@ -180,7 +180,7 @@ main :: proc() {
 		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 		sdl.RenderClear(renderer)
 
-		sys_render_map(renderer, &gs.game_map, render_cam)
+		sys_render_map(renderer, &gs.game_map, render_cam, &gs)
 		sys_render_entities(renderer, &gs.world, render_cam, &gs)
 
 		sys_render_particles(renderer, &gs)
@@ -205,6 +205,7 @@ init_game_state :: proc(gs: ^Game_State) {
 		bonus_aoe        = 0,
 		has_passive_aura = false,
 		health_locked    = false,
+		tier             = .Calm,
 	}
 	init_lua(gs)
 	spawn_all_entities(gs)

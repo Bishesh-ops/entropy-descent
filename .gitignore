@@ -75,3 +75,4 @@ ENTROPY-DESCENT-PLAN.md
 venv/*
 /src/_deps
 Project26
+ols.json

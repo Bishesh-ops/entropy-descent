@@ -21,8 +21,23 @@ spawn_entity :: proc(world: ^World) -> Entity_ID {
 process_destroys :: proc(world: ^World) {
 	for i in 0 ..< len(world.entities) {
 		if .Pending_Destroy in world.entities[i].components {
-			world.entities[i] = Entity{} // Zero-value struct automatically sets active = false
+			world.entities[i] = Entity{}
 		}
+	}
+}
+
+update_entropy_tier :: proc(gs: ^Game_State) {
+	pct := f32(gs.entropy.entropy) / f32(gs.entropy.max_entropy)
+	if pct >= 1.00 {
+		gs.entropy.tier = .Overflow
+	} else if pct >= 0.76 {
+		gs.entropy.tier = .Critical
+	} else if pct >= 0.51 {
+		gs.entropy.tier = .Fractured
+	} else if pct >= 0.26 {
+		gs.entropy.tier = .Unstable
+	} else {
+		gs.entropy.tier = .Calm
 	}
 }
 

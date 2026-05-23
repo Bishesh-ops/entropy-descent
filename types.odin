@@ -19,9 +19,18 @@ Render_Color :: struct {
 	r, g, b, a: u8,
 }
 
+Entropy_Tier :: enum {
+	Calm, // 0 - 25%
+	Unstable, // 26 - 50%
+	Fractured, // 51 - 75%
+	Critical, // 76 - 99%
+	Overflow, // 100%
+}
+
 Entropy_State :: struct {
 	entropy, max_entropy, tick_rate, fov_radius, bonus_aoe: int,
 	has_passive_aura, health_locked:                        bool,
+	tier:                                                   Entropy_Tier,
 }
 
 Action_Type :: enum {
