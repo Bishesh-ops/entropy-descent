@@ -174,8 +174,8 @@ main :: proc() {
 		}
 
 		render_cam := gs.camera
-		render_cam.x += shake_offset_x
-		render_cam.y += shake_offset_y
+		render_cam.x = render_cam.x + shake_offset_x
+		render_cam.y = render_cam.y + shake_offset_y
 
 		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 		sdl.RenderClear(renderer)

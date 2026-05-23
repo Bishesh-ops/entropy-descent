@@ -4,6 +4,7 @@ package main
 import "base:runtime"
 import "core:c"
 import "core:fmt"
+import "core:text/regex/parser"
 import lua "vendor:lua/5.4"
 
 init_lua :: proc(gs: ^Game_State) {
@@ -19,6 +20,7 @@ init_lua :: proc(gs: ^Game_State) {
 		lua.setfield(L, -2, name) // Add to our table
 	}
 
+	register_func(L, "is_occupied", l_is_occupied, gs)
 	register_func(L, "spawn_particles", l_spawn_particles, gs)
 	register_func(L, "deal_damage", l_deal_damage, gs)
 	register_func(L, "is_floor", l_is_floor, gs)
@@ -34,6 +36,26 @@ init_lua :: proc(gs: ^Game_State) {
 		fmt.eprintln("Lua Error Loading Spells:", lua.tostring(L, -1))
 		lua.pop(L, 1)
 	}
+}
+
+l_is_occupied :: proc "c" (L: ^lua.State) -> c.int {
+	gs := cast(^Game_State)lua.touserdata(L, lua.REGISTRYINDEX - 1)
+	x := int(lua.tointeger(L, 1))
+	y := int(lua.tointeger(L, 2))
+	caster := int(lua.tointeger(L, 3))
+
+	occupied := false
+	for id in 0 ..< len(gs.world.entities) {
+		if id == caster do continue
+		if !gs.world.entities[id].active do continue
+		if .Position not_in gs.world.entities[id].components do continue
+		if gs.world.entities[id].position.x == x && gs.world.entities[id].position.y == y {
+			occupied = true
+			break
+		}
+	}
+	lua.pushboolean(L, b32(occupied))
+	return 1
 }
 
 
@@ -163,6 +185,11 @@ cast_spell :: proc(gs: ^Game_State, spell_id: string, caster_id: int, tx, ty: in
 		return false
 	}
 
+	lua.getfield(L, -1, "cost")
+	spell_cost := int(lua.tointeger(L, -1))
+	lua.pop(L, 1)
+	gs.entropy.entropy = min(gs.entropy.entropy + spell_cost, gs.entropy.max_entropy)
+
 	lua.getfield(L, -1, "on_cast")
 	if !lua.isfunction(L, -1) {
 		fmt.eprintln("on_cast is not a function!")
@@ -176,7 +203,7 @@ cast_spell :: proc(gs: ^Game_State, spell_id: string, caster_id: int, tx, ty: in
 
 	if lua.pcall(L, 3, 1, 0) != 0 {
 		fmt.eprintln("Lua Error Executing Spell:", lua.tostring(L, -1))
-		lua.pop(L, 4) // pop error message and tables
+		lua.pop(L, 3)
 		return false
 	}
 	success := bool(lua.toboolean(L, -1))

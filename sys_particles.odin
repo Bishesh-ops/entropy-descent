@@ -77,7 +77,7 @@ sys_render_particles :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 	}
 
 	// Reset blend mode to default
-	sdl.SetRenderDrawBlendMode(renderer, sdl.BLENDMODE_BLEND)
+	sdl.SetRenderDrawBlendMode(renderer, cast(sdl.BlendMode)sdl.BLENDMODE_NONE)
 
 }
 

@@ -54,7 +54,7 @@ handle_key_down :: proc(gs: ^Game_State, key: sdl.KeyboardEvent, running: ^bool)
 		running^ = false
 	case .Q:
 		action_type = .Wait
-		cost = 10
+		cost = 1
 
 		tx := gs.world.entities[gs.player_id].position.x + gs.world.entities[gs.player_id].facing.x
 		ty := gs.world.entities[gs.player_id].position.y + gs.world.entities[gs.player_id].facing.y
@@ -62,7 +62,7 @@ handle_key_down :: proc(gs: ^Game_State, key: sdl.KeyboardEvent, running: ^bool)
 		cast_spell(gs, "scorch_earth", int(gs.player_id), tx, ty)
 	case .F:
 		action_type = .Wait
-		cost = 15
+		cost = 1
 
 		tx :=
 			gs.world.entities[gs.player_id].position.x +
