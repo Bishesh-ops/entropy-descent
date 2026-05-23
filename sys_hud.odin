@@ -1,4 +1,6 @@
 package main
+
+import "core:math"
 import sdl "vendor:sdl3"
 
 sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
@@ -56,8 +58,25 @@ sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 		if pct < 0 do pct = 0
 		if pct > 1 do pct = 1
 
-		er := u8(140 + pct * 80)
-		eb := u8(220 - pct * 60)
+		time_sec := f32(sdl.GetTicks()) / 1000.0
+		pulse: f32 = 1.0
+		#partial switch gs.entropy.tier {
+		case .Calm: 
+			pulse = 1.0
+		case .Unstable: 
+			pulse = 0.9 + 0.1 * math.sin(time_sec * 3.0)
+		case .Fractured: 
+			pulse = 0.7 + 0.3 * math.sin(time_sec * 8.0)
+		case .Critical, .Overflow: 
+			pulse = 0.5 + 0.5 * math.sin(time_sec * 25.0)
+		}
+
+		er_f := (140.0 * pulse) + (pct * 80.0)
+		eb_f := (220.0 * pulse) - (pct * 60.0)
+		
+		er := u8(clamp(er_f, 0.0, 255.0))
+		eb := u8(clamp(eb_f, 0.0, 255.0))
+
 		sdl.SetRenderDrawColor(renderer, er, 0, eb, 255)
 		fill := sdl.FRect{bx, bar_y, bw * pct, bar_h}
 		sdl.RenderFillRect(renderer, &fill)
@@ -84,7 +103,7 @@ sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 	}
 
 	if gs.flash.timer > 0 {
-		alpha := u8(gs.flash.timer * 220)
+		alpha := u8(clamp(gs.flash.timer * 220.0, 0.0, 255.0))
 		sdl.SetRenderDrawColor(renderer, gs.flash.r, gs.flash.g, gs.flash.b, alpha)
 		sdl.RenderFillRect(renderer, &sdl.FRect{0, 0, W, H})
 	}
@@ -105,4 +124,3 @@ sys_render_hud :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 
 	sdl.SetRenderDrawBlendMode(renderer, cast(sdl.BlendMode)sdl.BLENDMODE_NONE)
 }
-

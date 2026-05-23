@@ -65,8 +65,15 @@ sys_tick :: proc(gs: ^Game_State) {
 	}
 
 	if gs.entropy.tick_rate > 0 && gs.tick_count % gs.entropy.tick_rate == 0 {
-		gs.entropy.entropy += 1
-	}}
+		gs.entropy.entropy -= 1
+		if gs.entropy.entropy < 0 do gs.entropy.entropy = 0
+		update_entropy_tier(gs)
+	}
+	if gs.entropy.entropy >= gs.entropy.max_entropy {
+		trigger_entropy_event(gs)
+		update_entropy_tier(gs)
+	}
+}
 
 enemy_take_turn :: proc(gs: ^Game_State, enemy_id: Entity_ID) {
 	player := gs.world.entities[gs.player_id]

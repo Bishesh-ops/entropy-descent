@@ -4,7 +4,7 @@ package main
 import "base:runtime"
 import "core:c"
 import "core:fmt"
-import "core:text/regex/parser"
+// import "core:text/regex/parser"
 import lua "vendor:lua/5.4"
 
 init_lua :: proc(gs: ^Game_State) {
@@ -189,6 +189,7 @@ cast_spell :: proc(gs: ^Game_State, spell_id: string, caster_id: int, tx, ty: in
 	spell_cost := int(lua.tointeger(L, -1))
 	lua.pop(L, 1)
 	gs.entropy.entropy = min(gs.entropy.entropy + spell_cost, gs.entropy.max_entropy)
+	update_entropy_tier(gs)
 
 	lua.getfield(L, -1, "on_cast")
 	if !lua.isfunction(L, -1) {

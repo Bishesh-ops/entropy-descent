@@ -38,6 +38,7 @@ spawn_particle_burst :: proc(
 }
 
 sys_update_particles :: proc(gs: ^Game_State, dt: f32) {
+	spawn_entropy_aura(gs)
 	for i := 0; i < len(gs.particle_sys.particles); {
 		gs.particle_sys.particles[i].life -= dt
 
@@ -81,3 +82,37 @@ sys_render_particles :: proc(renderer: ^sdl.Renderer, gs: ^Game_State) {
 
 }
 
+spawn_entropy_aura::proc(gs: ^Game_State){
+	if gs.entropy.tier == .Calm do return
+
+	spawn_chance: f32 = 0.0
+	#partial switch gs.entropy.tier {
+		case .Calm: spawn_chance = 0.0
+		case .Unstable: spawn_chance = 0.1
+		case .Fractured: spawn_chance = 0.40
+		case .Critical: spawn_chance = 0.75
+		case .Overflow: spawn_chance = 0.90
+	}
+
+	if rand.float32() < spawn_chance{
+		px := gs.world.entities[gs.player_id].transform.x + f32(TILE_SIZE) / 2.0
+		py := gs.world.entities[gs.player_id].transform.y + f32(TILE_SIZE) / 2.0
+
+		offset_x := (rand.float32() - 0.5) * 20.0
+		offset_y := (rand.float32() - 0.5) * 20.0
+
+		append(
+			&gs.particle_sys.particles,
+			Particle {
+				x = px + offset_x,
+				y = py + offset_y,
+				dx = (rand.float32() - 0.5) * 10.0,
+				dy = -15.0 - (rand.float32() * 10.0),
+				life = 0.5 + rand.float32() * 0.5,
+				max_life = 1.0,
+				color = {150, 50, 200, 255},
+				size = 2.0 + rand.float32() * 2.0,
+			},
+		)
+	}
+}
