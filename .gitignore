@@ -76,3 +76,4 @@ venv/*
 /src/_deps
 Project26
 ols.json
+.vscode/
