@@ -35,6 +35,30 @@ sys_tick :: proc(gs: ^Game_State) {
 			try_move(gs, gs.player_id, action.direction.x, action.direction.y)
 		}
 	case .Melee_Attack:
+		target_x := gs.world.entities[gs.player_id].position.x + action.direction.x
+		target_y := gs.world.entities[gs.player_id].position.y + action.direction.y
+
+		for id in 0 ..< len(gs.world.entities) {
+			if !gs.world.entities[id].active do continue
+			if .Enemy not_in gs.world.entities[id].components do continue
+			
+			if gs.world.entities[id].position.x == target_x &&
+			   gs.world.entities[id].position.y == target_y {
+				
+				damage := gs.world.entities[gs.player_id].attack
+				gs.world.entities[id].health -= damage
+
+				gs.screen_shake = 0.15
+				spawn_particle_burst(gs, target_x, target_y, {255, 255, 200, 255}, 10)
+
+				if gs.world.entities[id].health <= 0 {
+					gs.world.entities[id].components += {.Pending_Destroy}
+					spawn_particle_burst(gs, target_x, target_y, {200, 40, 40, 255}, 25)
+				}
+				break // Target hit, end the loop
+			}
+		}
+
 	case .Spell:
 	case .Wait:
 	case .None:
